@@ -114,6 +114,17 @@ declare namespace MapboxGL {
   function setTelemetryEnabled(telemetryEnabled: boolean): void;
   function setConnected(connected: boolean): void;
   function requestAndroidLocationPermissions(): Promise<boolean>;
+  function initializeV2xCore(mqttHost: string): void;
+  function switchV2xCoreBroker(mqttHost: string): void;
+  function closeV2xCore(): void;
+  function registerGeojsonCallback(
+    callback: (type: number, json: string) => void
+  ): void;
+  function registerObuPosCallback(callback: (json: string) => void): void;
+  function registerGlosaCallback(callback: (json: string) => void): void;
+  function unregisterGeojsonCallback(): void;
+  function unregisterObuPosCallback(): void;
+  function unregisterGlosaCallback(): void;
 
   const offlineManager: OfflineManager;
   const snapshotManager: SnapshotManager;

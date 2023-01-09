@@ -23,6 +23,10 @@ const extraNodeModules = {
 
 function getBlacklist() {
   const nodeModuleDirs = [
+    /[a-z]*_native_libs\/.*/,
+    /javac\/.*/,
+    /.cxx\/.*/,
+    glob(`${path.resolve(__dirname, '..')}/android/*/.cxx/*`),
     glob(`${path.resolve(__dirname, '..')}/node_modules/*`),
     glob(`${path.resolve(__dirname, '..')}/docs/*`),
     glob(`${path.resolve(__dirname, '..')}/e2e/*`),

@@ -61,6 +61,7 @@ class App extends React.Component {
   async componentDidMount() {
     if (IS_ANDROID) {
       const isGranted = await MapboxGL.requestAndroidLocationPermissions();
+      MapboxGL.initializeV2xCore('mqtt.sysinnov.consider-it.de');
       this.setState({
         isAndroidPermissionGranted: isGranted,
         isFetchingAndroidPermission: false,

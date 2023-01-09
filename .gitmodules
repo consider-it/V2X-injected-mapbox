@@ -1,0 +1,6 @@
+[submodule "cpp/external/V2X-Native_Core"]
+	path = cpp/external/V2X-Native_Core
+	url = git@github.com:consider-it/V2X-Native_Core.git
+[submodule "cpp/external/mosquitto"]
+	path = cpp/external/mosquitto
+	url = git@github.com:eclipse/mosquitto.git

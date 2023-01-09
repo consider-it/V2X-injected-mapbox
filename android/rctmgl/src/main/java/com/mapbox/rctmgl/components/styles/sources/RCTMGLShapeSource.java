@@ -62,12 +62,9 @@ public class RCTMGLShapeSource extends RCTSource<GeoJsonSource> {
     @Override
     public void addToMap(final RCTMGLMapView mapView) {
         // Wait for style before adding the source to the map
-        mapView.getMapboxMap().getStyle(new Style.OnStyleLoaded() {
-            @Override
-            public void onStyleLoaded(@NonNull Style style) {
-                MapboxMap map = mapView.getMapboxMap();
-                RCTMGLShapeSource.super.addToMap(mapView);
-            }
+        mapView.getMapboxMap().getStyle(style -> {
+            MapboxMap map = mapView.getMapboxMap();
+            RCTMGLShapeSource.super.addToMap(mapView);
         });
     }
 

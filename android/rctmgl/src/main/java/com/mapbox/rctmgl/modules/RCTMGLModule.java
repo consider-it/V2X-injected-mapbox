@@ -2,7 +2,9 @@ package com.mapbox.rctmgl.modules;
 
 import android.os.Handler;
 import android.util.Log;
+import android.util.Pair;
 
+import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -10,6 +12,8 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.common.MapBuilder;
 import com.facebook.react.module.annotations.ReactModule;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
+import com.facebook.react.uimanager.ThemedReactContext;
 import com.mapbox.mapboxsdk.maps.TelemetryDefinition;
 import com.mapbox.mapboxsdk.Mapbox;
 // import com.mapbox.mapboxsdk.constants.Style;
@@ -22,14 +26,19 @@ import com.mapbox.rctmgl.http.CustomHeadersInterceptor;
 import com.mapbox.rctmgl.location.UserLocationVerticalAlignment;
 import com.mapbox.rctmgl.location.UserTrackingMode;
 import com.mapbox.mapboxsdk.maps.Style;
+import com.mapbox.rctmgl.models.*;
 
 import okhttp3.Dispatcher;
 import okhttp3.OkHttpClient;
 
 import com.mapbox.mapboxsdk.module.http.HttpRequestUtil;
 
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
@@ -325,7 +334,7 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void getAccessToken(Promise promise) {
         String token = Mapbox.getAccessToken();
-        if(token == null) {
+        if (token == null) {
             promise.reject("missing_access_token", "No access token has been set");
         } else {
             promise.resolve(token);
@@ -359,5 +368,120 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
         // https://github.com/mapbox/mapbox-gl-native/blob/master/platform/android/src/http_file_source.cpp#L192
         dispatcher.setMaxRequestsPerHost(20);
         return dispatcher;
+    }
+
+
+    // ==========================================================================================
+    // ==========================================================================================
+    // ==========================================================================================
+    // ==========================================================================================
+    public static Consumer<Pair<Integer, String>> registeredGeojsonCallback;
+    public static final String GLOSA_CALLBACK_TOKEN = "GLOSA";
+    private ObuInfo lastObuInfo;
+    private final Timer glosaTimer = new Timer();
+    private final Timer updateTimer = new Timer();
+    private int listenerCount = 0;
+
+    static {
+        System.loadLibrary("cpp");
+    }
+
+    public native void nativeInit(String brokerUri);
+
+    public native void nativeSwitchBroker(String brokerUri);
+
+    public native TlSpat[] nativeGlosa(double lon, double lat, double heading, double obuTime, int laneType);
+
+    public native void nativeUpdateCache();
+
+    public static native void nativeClose();
+
+    @ReactMethod
+    public void addListener(String eventName) {
+        if (eventName.equals("GLOSA")) {
+            glosaTimer.purge();
+            glosaTimer.scheduleAtFixedRate(this.glosaTask, 0, 1000);
+        }
+
+        listenerCount += 1;
+    }
+
+    @ReactMethod
+    public void removeListeners(Integer count) {
+        listenerCount -= count;
+        if (listenerCount == 0) {
+            closeV2xCore();
+        }
+    }
+
+    @ReactMethod
+    public void initializeV2xCore(String brokerUri) {
+        nativeInit(brokerUri);
+        updateTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                nativeUpdateCache();
+            }
+        }, 0, 10200);
+    }
+
+    @ReactMethod
+    public void closeV2xCore() {
+        updateTimer.cancel();
+        glosaTimer.cancel();
+        nativeClose();
+    }
+
+    @ReactMethod
+    public void switchV2xCoreBroker(String brokerUri) {
+        nativeSwitchBroker(brokerUri);
+    }
+
+    private final TimerTask glosaTask = new TimerTask() {
+        @Override
+        public void run() {
+            if (RCTMGLModule.this.lastObuInfo != null) {
+                TlSpat[] spats = nativeGlosa(
+                        lastObuInfo.getLon(),
+                        lastObuInfo.getLat(),
+                        lastObuInfo.getHeading(),
+                        lastObuInfo.getTime(),
+                        0);
+                StringBuilder stringBuilder = new StringBuilder(500);
+                stringBuilder.append("[");
+                for (int i = 0; i < spats.length; i++) {
+                    stringBuilder.append(spats[i].toJson());
+                    if (i != (spats.length - 1))
+                        stringBuilder.append(",");
+                }
+                stringBuilder.append("]");
+
+                WritableMap params = Arguments.createMap();
+                params.putString("tlSpatList", stringBuilder.toString());
+                sendEvent("GLOSA", params);
+            }
+        }
+    };
+
+    void javaObuInfoCallback(double lon, double lat, double heading, double speed, double time) {
+        lastObuInfo = new ObuInfo(lon, lat, heading, speed, time);
+        WritableMap params = Arguments.createMap();
+        params.putString("obuInfo", lastObuInfo.toJson());
+        sendEvent("OBU_INFO", params);
+    }
+
+    void javaGeoJSONCallback(int featureCollectionType, byte[] utf8Geojson) {
+        if (registeredGeojsonCallback != null) {
+            String geojson = new String(utf8Geojson, StandardCharsets.UTF_8);
+            registeredGeojsonCallback.accept(new Pair<>(featureCollectionType, geojson));
+        }
+    }
+
+    private void sendEvent(
+            String eventName,
+            WritableMap params) {
+        this.mReactContext
+                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                .emit(eventName, params);
     }
 }

@@ -1,6 +1,7 @@
 import {
   Animated as RNAnimated,
   NativeModules,
+  NativeEventEmitter,
   PermissionsAndroid,
 } from 'react-native';
 
@@ -39,6 +40,38 @@ import Style from './components/Style';
 import Logger from './utils/Logger';
 
 const MapboxGL = {...NativeModules.MGLModule};
+
+const eventEmitter = new NativeEventEmitter(NativeModules.RnCore);
+
+MapboxGL.registerGeojsonCallback = (callback) => {
+  eventEmitter.addListener('GEOJSON', ({ type, geoJSON }) => {
+    callback(type, geoJSON);
+  });
+}
+
+MapboxGL.registerObuPosCallback = (callback) => {
+  eventEmitter.addListener('OBU_INFO', ({ obuInfo }) => {
+    callback(obuInfo);
+  });
+}
+
+MapboxGL.registerGlosaCallback = (callback) => {
+  eventEmitter.addListener('GLOSA', ({ tlSpatList }) => {
+    callback(tlSpatList);
+  });
+}
+
+MapboxGL.unregisterGeojsonCallback = () => {
+  eventEmitter.removeAllListeners('GEOJSON');
+}
+
+MapboxGL.unregisterObuPosCallback = () => {
+  eventEmitter.removeAllListeners('OBU_INFO');
+}
+
+MapboxGL.unregisterGlosaCallback = () => {
+  eventEmitter.removeAllListeners('GLOSA');
+}
 
 // static methods
 MapboxGL.requestAndroidLocationPermissions = async function () {
