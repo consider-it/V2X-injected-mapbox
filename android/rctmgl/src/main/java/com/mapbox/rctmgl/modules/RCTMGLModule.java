@@ -376,6 +376,7 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
     // ==========================================================================================
     // ==========================================================================================
     public static Consumer<Pair<Integer, String>> registeredGeojsonCallback;
+    public static Consumer<ObuInfo> registeredObuCallback;
     public static final String GLOSA_CALLBACK_TOKEN = "GLOSA";
     private ObuInfo lastObuInfo;
     private final Timer glosaTimer = new Timer();
@@ -468,6 +469,8 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
         WritableMap params = Arguments.createMap();
         params.putString("obuInfo", lastObuInfo.toJson());
         sendEvent("OBU_INFO", params);
+        if (registeredObuCallback != null)
+        registeredObuCallback.accept(lastObuInfo);
     }
 
     void javaGeoJSONCallback(int featureCollectionType, byte[] utf8Geojson) {
