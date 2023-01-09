@@ -1,6 +1,7 @@
 package com.mapbox.rctmgl.components.mapview;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -49,17 +50,18 @@ import com.mapbox.mapboxsdk.maps.MapboxMapOptions;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.mapboxsdk.maps.Style;
 import com.mapbox.mapboxsdk.maps.UiSettings;
+import com.mapbox.mapboxsdk.plugins.annotation.Line;
 import com.mapbox.mapboxsdk.plugins.localization.LocalizationPlugin;
 import com.mapbox.mapboxsdk.plugins.annotation.OnSymbolClickListener;
 import com.mapbox.mapboxsdk.plugins.annotation.OnSymbolDragListener;
 import com.mapbox.mapboxsdk.plugins.annotation.Symbol;
 import com.mapbox.mapboxsdk.plugins.annotation.SymbolManager;
 import com.mapbox.mapboxsdk.style.expressions.Expression;
-import com.mapbox.mapboxsdk.style.expressions.Expression.*;
+import com.mapbox.mapboxsdk.style.layers.FillLayer;
 import com.mapbox.mapboxsdk.style.layers.Layer;
 import com.mapbox.mapboxsdk.style.layers.LineLayer;
 import com.mapbox.mapboxsdk.style.layers.Property;
-import com.mapbox.mapboxsdk.style.layers.PropertyFactory;
+import com.mapbox.mapboxsdk.style.layers.SymbolLayer;
 import com.mapbox.mapboxsdk.style.sources.GeoJsonOptions;
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource;
 import com.mapbox.rctmgl.R;
@@ -105,12 +107,25 @@ import org.json.*;
 
 import javax.annotation.Nullable;
 
-import static com.mapbox.mapboxsdk.style.expressions.Expression.color;
-import static com.mapbox.mapboxsdk.style.expressions.Expression.interpolate;
-import static com.mapbox.mapboxsdk.style.expressions.Expression.lineProgress;
-import static com.mapbox.mapboxsdk.style.expressions.Expression.linear;
-import static com.mapbox.mapboxsdk.style.expressions.Expression.stop;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineDasharray;
+import static com.mapbox.mapboxsdk.style.expressions.Expression.*;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.fillAntialias;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.fillColor;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.fillOpacity;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.fillPattern;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.iconAllowOverlap;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.iconImage;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.iconPitchAlignment;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.iconRotate;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.iconRotationAlignment;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.iconSize;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineCap;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineGradient;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineJoin;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineWidth;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.symbolSortKey;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textColor;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textField;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textSize;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.visibility;
 
 /**
@@ -481,98 +496,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
             setupLocalization(style);
 
             // V2X CORE
-            GeoJsonSource greenLaneSrc = new GeoJsonSource("green-lane-src", new GeoJsonOptions().withLineMetrics(true));
-            GeoJsonSource redLaneSrc = new GeoJsonSource("red-lane-src", new GeoJsonOptions().withLineMetrics(true));
-            GeoJsonSource yellowLaneSrc = new GeoJsonSource("yellow-lane-src", new GeoJsonOptions().withLineMetrics(true));
-            GeoJsonSource darkLaneSrc = new GeoJsonSource("dark-lane-src", new GeoJsonOptions().withLineMetrics(true));
-
-            style.addSource(greenLaneSrc);
-            style.addSource(redLaneSrc);
-            style.addSource(yellowLaneSrc);
-            style.addSource(darkLaneSrc);
-
-            RCTMGLModule.registeredGeojsonCallback = update -> {
-                ((ThemedReactContext) mContext).runOnUiQueueThread(() -> {
-                    switch (update.first) {
-                        case 0:
-                            greenLaneSrc.setGeoJson(update.second);
-                            break;
-                        case 1:
-                            redLaneSrc.setGeoJson(update.second);
-                            break;
-                        case 2:
-                            yellowLaneSrc.setGeoJson(update.second);
-                            break;
-                        case 3:
-                            darkLaneSrc.setGeoJson(update.second);
-                            break;
-                    }
-                });
-            };
-
-            LineLayer greenLaneLayer = new LineLayer("green-lane-layer", "green-lane-src");
-            LineLayer redLaneLayer = new LineLayer("red-lane-layer", "red-lane-src");
-            LineLayer yellowLaneLayer = new LineLayer("yellow-lane-layer", "yellow-lane-src");
-            LineLayer darkLaneLayer = new LineLayer("dark-lane-layer", "dark-lane-src");
-
-            greenLaneLayer.setProperties(
-                    PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
-                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
-                    PropertyFactory.lineWidth(4f),
-                    PropertyFactory.lineGradient(
-                            interpolate(
-                                    linear(),
-                                    lineProgress(),
-                                    stop(0f, color(Color.argb(1, 0, 158, 21))),
-                                    stop(1f, color(Color.argb(0, 0, 158, 21)))
-                            )
-                    )
-            );
-            redLaneLayer.setProperties(
-                    PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
-                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
-                    PropertyFactory.lineWidth(4f),
-                    PropertyFactory.lineColor(color(Color.argb(1, 200, 0, 0)))
-//                    PropertyFactory.lineGradient(
-//                            interpolate(
-//                                    linear(),
-//                                    lineProgress(),
-//                                    stop(0f, color(Color.argb(1, 200, 0, 0))),
-//                                    stop(1f, color(Color.argb(0, 200, 0, 0)))
-//                            )
-//                    )
-            );
-            yellowLaneLayer.setProperties(
-                    PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
-                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
-                    PropertyFactory.lineWidth(4f),
-                    PropertyFactory.lineGradient(
-                            interpolate(
-                                    linear(),
-                                    lineProgress(),
-                                    stop(0f, color(Color.argb(1, 249, 168, 0))),
-                                    stop(1f, color(Color.argb(0, 249, 168, 0)))
-                            )
-                    )
-            );
-            darkLaneLayer.setProperties(
-                    PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
-                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
-                    PropertyFactory.lineWidth(4f),
-                    PropertyFactory.lineGradient(
-                            interpolate(
-                                    linear(),
-                                    lineProgress(),
-                                    stop(0f, color(Color.argb(1, 136, 136, 136))),
-                                    stop(1f, color(Color.argb(0, 136, 136, 136)))
-                            )
-                    )
-            );
-
-            style.addLayer(greenLaneLayer);
-            style.addLayer(redLaneLayer);
-            style.addLayer(yellowLaneLayer);
-            style.addLayer(darkLaneLayer);
+            initV2xLayers(style);
             // END V2X CORE
         });
 
@@ -909,6 +833,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
                     @Override
                     public void onStyleLoaded(@NonNull Style style) {
                         addAllSourcesToMap();
+                        initV2xLayers(style);
                     }
                 });
             } else {
@@ -1643,5 +1568,321 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
         mLocationComponentManager.update(getMapboxMap().getStyle());
     }
 
+    private void initV2xLayers(Style style) {
+        for (Pair<String, Integer> asset : v2xImageAssets()) {
+            Bitmap icon = com.mapbox.mapboxsdk.utils.BitmapUtils.getBitmapFromDrawable(
+                    mContext.getResources().getDrawable(asset.second)
+            );
+            style.addImage(asset.first, icon);
+        }
 
+        GeoJsonSource greenLaneSrc = new GeoJsonSource("green-lane-src", new GeoJsonOptions().withLineMetrics(true));
+        GeoJsonSource redLaneSrc = new GeoJsonSource("red-lane-src", new GeoJsonOptions().withLineMetrics(true));
+        GeoJsonSource yellowLaneSrc = new GeoJsonSource("yellow-lane-src", new GeoJsonOptions().withLineMetrics(true));
+        GeoJsonSource darkLaneSrc = new GeoJsonSource("dark-lane-src", new GeoJsonOptions().withLineMetrics(true));
+        GeoJsonSource refPointSrc = new GeoJsonSource("ref-point-src");
+        GeoJsonSource denmSrc = new GeoJsonSource("denm-src");
+        GeoJsonSource camSrc = new GeoJsonSource("cam-src");
+        GeoJsonSource cpmAreaSrc = new GeoJsonSource("cpm-area-src");
+        GeoJsonSource cpmSensorSrc = new GeoJsonSource("cpm-sensor-src");
+        GeoJsonSource cpmObjectSrc = new GeoJsonSource("cpm-object-src");
+        GeoJsonSource ivimSrc = new GeoJsonSource("ivim-src");
+        GeoJsonSource miscSrc = new GeoJsonSource("misc-src");
+
+        style.addSource(greenLaneSrc);
+        style.addSource(redLaneSrc);
+        style.addSource(yellowLaneSrc);
+        style.addSource(darkLaneSrc);
+        style.addSource(refPointSrc);
+        style.addSource(denmSrc);
+        style.addSource(camSrc);
+        style.addSource(cpmAreaSrc);
+        style.addSource(cpmSensorSrc);
+        style.addSource(cpmObjectSrc);
+        style.addSource(ivimSrc);
+        style.addSource(miscSrc);
+
+        RCTMGLModule.registeredGeojsonCallback = update -> {
+            ((ThemedReactContext) mContext).runOnUiQueueThread(() -> {
+                switch (update.first) {
+                    case 0:
+                        greenLaneSrc.setGeoJson(update.second);
+                        break;
+                    case 1:
+                        redLaneSrc.setGeoJson(update.second);
+                        break;
+                    case 2:
+                        yellowLaneSrc.setGeoJson(update.second);
+                        break;
+                    case 3:
+                        darkLaneSrc.setGeoJson(update.second);
+                        break;
+                    case 4:
+                        refPointSrc.setGeoJson(update.second);
+                        break;
+                    case 5:
+                        denmSrc.setGeoJson(update.second);
+                        break;
+                    case 6:
+                        camSrc.setGeoJson(update.second);
+                        break;
+                    case 7:
+                        cpmAreaSrc.setGeoJson(update.second);
+                        break;
+                    case 8:
+                        cpmSensorSrc.setGeoJson(update.second);
+                        break;
+                    case 9:
+                        cpmObjectSrc.setGeoJson(update.second);
+                        break;
+                    case 10:
+                        ivimSrc.setGeoJson(update.second);
+                        break;
+                    case 11:
+                        miscSrc.setGeoJson(update.second);
+                        break;
+                }
+            });
+        };
+
+        LineLayer greenLaneLayer = new LineLayer("green-lane-layer", "green-lane-src");
+        LineLayer redLaneLayer = new LineLayer("red-lane-layer", "red-lane-src");
+        LineLayer yellowLaneLayer = new LineLayer("yellow-lane-layer", "yellow-lane-src");
+        LineLayer darkLaneLayer = new LineLayer("dark-lane-layer", "dark-lane-src");
+        SymbolLayer refPointLayer = new SymbolLayer("ref-point-layer", "ref-point-src");
+        SymbolLayer denmLayer = new SymbolLayer("denm-layer", "denm-src");
+        LineLayer denmPathLayer = new LineLayer("denm-path-layer", "denm-src");
+        SymbolLayer camLayer = new SymbolLayer("cam-layer", "cam-src");
+        LineLayer camPathLayer = new LineLayer("cam-path-layer", "cam-src");
+        FillLayer cpmAreaLayer = new FillLayer("cpm-area-layer", "cpm-area-src");
+        SymbolLayer cpmSensorLayer = new SymbolLayer("cpm-sensor-layer", "cpm-sensor-src");
+        FillLayer cpmObjectLayer = new FillLayer("cpm-object-layer", "cpm-object-src");
+
+        greenLaneLayer.setProperties(
+                lineCap(Property.LINE_CAP_ROUND),
+                lineJoin(Property.LINE_JOIN_ROUND),
+                lineWidth(4f),
+                lineGradient(
+                        interpolate(
+                                linear(),
+                                lineProgress(),
+                                stop(0f, color(Color.parseColor("#009e15"))),
+                                stop(1f, color(Color.TRANSPARENT))
+                        )
+                )
+        );
+        redLaneLayer.setProperties(
+                lineCap(Property.LINE_CAP_ROUND),
+                lineJoin(Property.LINE_JOIN_ROUND),
+                lineWidth(4f),
+                lineGradient(
+                        interpolate(
+                                linear(),
+                                lineProgress(),
+                                stop(0f, color(Color.parseColor("#c80000"))),
+                                stop(1f, color(Color.TRANSPARENT))
+                        )
+                )
+        );
+        yellowLaneLayer.setProperties(
+                lineCap(Property.LINE_CAP_ROUND),
+                lineJoin(Property.LINE_JOIN_ROUND),
+                lineWidth(4f),
+                lineGradient(
+                        interpolate(
+                                linear(),
+                                lineProgress(),
+                                stop(0f, color(Color.parseColor("#f9a800"))),
+                                stop(1f, color(Color.TRANSPARENT))
+                        )
+                )
+        );
+        darkLaneLayer.setProperties(
+                lineCap(Property.LINE_CAP_ROUND),
+                lineJoin(Property.LINE_JOIN_ROUND),
+                lineWidth(4f),
+                lineGradient(
+                        interpolate(
+                                linear(),
+                                lineProgress(),
+                                stop(0f, color(Color.parseColor("#888888"))),
+                                stop(1f, color(Color.TRANSPARENT))
+                        )
+                )
+        );
+        refPointLayer.setProperties(
+                iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_MAP),
+                iconImage("cam-rsu"),
+                iconSize(interpolate(exponential(0.5f), zoom(), stop(16, 0.22f), stop(18, 0.5f))),
+                textField(Expression.get("intersectionId")),
+                symbolSortKey(5f),
+                textColor("#ffffff"),
+                textSize(interpolate(exponential(0.5), zoom(), stop(16, 6f), stop(18, 14f)))
+        );
+        denmPathLayer.setProperties(
+                lineCap(Property.LINE_CAP_ROUND),
+                lineJoin(Property.LINE_JOIN_ROUND),
+                lineWidth(5f),
+                lineGradient(
+                        interpolate(
+                                linear(),
+                                lineProgress(),
+                                stop(0f, color(Color.parseColor("#d71904"))),
+                                stop(1f, color(Color.TRANSPARENT))
+                        )
+                )
+        );
+        denmLayer.setProperties(
+                iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_VIEWPORT),
+                iconImage("cam-car"),
+                iconSize(0.3f),
+                symbolSortKey(9f),
+                iconAllowOverlap(true),
+                iconImage(match(
+                                toNumber(get("causeCode")),
+                                literal("denm-gen"),
+                                stop(1, "denm-jam"),
+                                stop(3, "denm-wks"),
+                                stop(10, "denm-obs"),
+                                stop(11, "denm-anm"),
+                                stop(12, "denm-vru"),
+                                stop(15, "denm-eon"),
+                                stop(27, "denm-jam"),
+                                stop(94, match(
+                                        toNumber(get("subCauseCode")),
+                                        literal("denm-stn"),
+                                        stop(2, "denm-bkn"),
+                                        stop(3, "denm-col"))
+                                ),
+                                stop(95, "denm-emv"),
+                                stop(97, "denm-col"),
+                                stop(99, "denm-stale")
+                        )
+                )
+        );
+        camPathLayer.setProperties(
+                lineCap(Property.LINE_CAP_ROUND),
+                lineJoin(Property.LINE_JOIN_ROUND),
+                lineWidth(5f),
+                lineGradient(
+                        interpolate(
+                                linear(),
+                                lineProgress(),
+                                stop(0f, color(Color.parseColor(isDarkMode() ? "#787878" : "#1c445b"))),
+                                stop(1f, color(Color.TRANSPARENT))
+                        )
+                )
+        );
+        camLayer.setProperties(
+                iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_MAP),
+                iconAllowOverlap(true),
+                symbolSortKey(6f),
+                iconImage(match(
+                                toNumber(get("stationType")),
+                                literal("cam-rsu"),
+                                stop(1, "cam-vru"),
+                                stop(2, "cam-bike"),
+                                stop(3, "cam-scooter"),
+                                stop(4, "cam-motorcycle"),
+                                stop(5, "cam-car"),
+                                stop(6, "cam-bus"),
+                                stop(7, "cam-sm-truck"),
+                                stop(8, "cam-lg-truck"),
+                                stop(9, "cam-trailer"),
+                                stop(10, "cam-emv"),
+                                stop(11, "cam-tram")
+                        )
+                ),
+                iconSize(0.22f),
+                iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
+                iconRotate(get("degreesHeading"))
+        );
+        cpmAreaLayer.setProperties(
+                fillOpacity(0.3f),
+                fillAntialias(false),
+                fillColor("#dddddd")
+        );
+        cpmSensorLayer.setProperties(
+                iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_MAP),
+                iconAllowOverlap(true),
+                symbolSortKey(8f),
+                iconImage("cpm-station"),
+                iconSize(0.05f)
+        );
+        cpmObjectLayer.setProperties(
+                fillOpacity(0.8f),
+                fillAntialias(false),
+                fillColor(match(
+                        toNumber(get("classification")),
+                        color(Color.parseColor("#888888")),
+                        stop(1, color(Color.parseColor("#5c84db"))),
+                        stop(2, color(Color.parseColor("#db5c5c"))),
+                        stop(3, color(Color.parseColor("#65db5c")))
+                )),
+                fillPattern(match(
+                        toNumber(get("classification")),
+                        literal("empty"),
+                        stop(1, "cpm-vhc"),
+                        stop(2,"cpm-per"),
+                        stop(3, "cpm-anm")
+                ))
+        );
+
+        style.addLayer(cpmAreaLayer);
+        style.addLayer(greenLaneLayer);
+        style.addLayer(redLaneLayer);
+        style.addLayer(yellowLaneLayer);
+        style.addLayer(darkLaneLayer);
+        style.addLayer(refPointLayer);
+        style.addLayer(camPathLayer);
+        style.addLayer(camLayer);
+        style.addLayer(cpmSensorLayer);
+        style.addLayer(cpmObjectLayer);
+        style.addLayer(denmPathLayer);
+        style.addLayer(denmLayer);
+    }
+
+    private boolean isDarkMode() {
+        int nightModeFlags =
+                mContext.getResources().getConfiguration().uiMode &
+                        Configuration.UI_MODE_NIGHT_MASK;
+        return Configuration.UI_MODE_NIGHT_YES == nightModeFlags;
+    }
+
+    private List<Pair<String, Integer>> v2xImageAssets() {
+        boolean isDarkMode = isDarkMode();
+        return Arrays.asList(
+                new Pair("cam-bike", isDarkMode ? R.drawable.cam_bike : R.drawable.cam_bike_light),
+                new Pair("cam-bus", isDarkMode ? R.drawable.cam_bus : R.drawable.cam_bus_light),
+                new Pair("cam-car", isDarkMode ? R.drawable.cam_car : R.drawable.cam_car_light),
+                new Pair("cam-emv", isDarkMode ? R.drawable.cam_special : R.drawable.cam_emv_light),
+                new Pair("cam-lg-truck", isDarkMode ? R.drawable.cam_heavy_truck : R.drawable.cam_lgtruck_light),
+                new Pair("cam-sm-truck", isDarkMode ? R.drawable.cam_light_truck : R.drawable.cam_smltruck_light),
+                new Pair("cam-motorcycle", isDarkMode ? R.drawable.cam_motorcycle : R.drawable.cam_motorcycle_light),
+                new Pair("cam-scooter", isDarkMode ? R.drawable.cam_scooter : R.drawable.cam_scooter_light),
+                new Pair("cam-rsu", isDarkMode ? R.drawable.cam_rsu : R.drawable.cam_default_light),
+                new Pair("cam-vru", isDarkMode ? R.drawable.cam_pedestrian : R.drawable.cam_vru_light),
+                new Pair("cam-trailer", isDarkMode ? R.drawable.cam_trailer : R.drawable.cam_trailer_light),
+                new Pair("cam-tram", isDarkMode ? R.drawable.cam_tram : R.drawable.cam_tram_light),
+                new Pair("denm-acc", R.drawable.warning_accident),
+                new Pair("denm-anm", R.drawable.warning_animals),
+                new Pair("denm-brk", R.drawable.warning_brake),
+                new Pair("denm-bdn", R.drawable.warning_breakdown),
+                new Pair("denm-col", R.drawable.warning_collision),
+                new Pair("denm-emv", R.drawable.warning_emv),
+                new Pair("denm-eon", R.drawable.warning_emv_ong),
+                new Pair("denm-gen", R.drawable.warning_generic),
+                new Pair("denm-jam", R.drawable.warning_jam),
+                new Pair("denm-obs", R.drawable.warning_obstacle),
+                new Pair("denm-ovr", R.drawable.warning_overtake),
+                new Pair("denm-wks", R.drawable.warning_roadworks),
+                new Pair("denm-stale", R.drawable.warning_stale),
+                new Pair("denm-stn", R.drawable.warning_stationary),
+                new Pair("denm-vru", R.drawable.warning_vru),
+                new Pair("cpm-anm", R.drawable.class_animal),
+                new Pair("cpm-vhc", R.drawable.class_vehicle),
+                new Pair("cpm-per", R.drawable.class_person),
+                new Pair("empty", R.drawable.empty_drawable)
+        );
+    }
 }

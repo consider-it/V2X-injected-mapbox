@@ -23,6 +23,7 @@ const extraNodeModules = {
 
 function getBlacklist() {
   const nodeModuleDirs = [
+    /\*.java~/,
     /[a-z]*_native_libs\/.*/,
     /javac\/.*/,
     /.cxx\/.*/,
