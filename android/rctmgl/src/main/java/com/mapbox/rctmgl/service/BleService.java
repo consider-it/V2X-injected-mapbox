@@ -3,13 +3,11 @@ package com.mapbox.rctmgl.service;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Binder;
-import android.os.Build;
 import android.os.IBinder;
 import android.os.ParcelUuid;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.WritableMap;
@@ -18,15 +16,11 @@ import com.polidea.rxandroidble3.RxBleConnection;
 import com.polidea.rxandroidble3.RxBleDevice;
 import com.polidea.rxandroidble3.internal.RxBleLog;
 import com.polidea.rxandroidble3.scan.ScanRecord;
-import com.polidea.rxandroidble3.scan.ScanResult;
 import com.polidea.rxandroidble3.scan.ScanSettings;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
-import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.disposables.Disposable;
 
@@ -48,7 +42,7 @@ public class BleService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        RxBleClient.setLogLevel(RxBleLog.VERBOSE);
+        RxBleClient.setLogLevel(RxBleLog.DEBUG);
 
         rxBleClient = RxBleClient.create(getApplicationContext());
     }
@@ -76,6 +70,7 @@ public class BleService extends Service {
                                 params.putInt("rssi", scanResult.getRssi());
                                 listener.sendEvent("DEVICE_FOUND", params);
                             }
+                            connect(scanResult.getBleDevice().getMacAddress());
                         },
                         throwable ->
                                 Log.d("InjectedMaps", "Error during scanning: " + throwable.getMessage())
@@ -127,8 +122,13 @@ public class BleService extends Service {
                                         ));
                     }
                 },
-                throwable ->
-                        Log.d("InjectedMaps", "Error during connecting: " + throwable.getMessage())
+                throwable -> {
+                    if (throwable.getMessage() != null && throwable.getMessage().contains("lready connected")){
+                        Log.d("InjectedMaps", "connect: disposing");
+                        scanDisposable.dispose();
+                    }
+                    Log.d("InjectedMaps", "Error during connecting: " + throwable.getMessage());
+                }
         ));
     }
 

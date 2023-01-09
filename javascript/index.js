@@ -49,6 +49,7 @@ export class BleMessageSource {
   }
 
   scanForObu = MapboxGL.scanForObu;
+  disconnect = MapboxGL.disconnect;
   connectToObu = MapboxGL.connectToObu;
 
   registerOnDeviceFound = (callback) => {

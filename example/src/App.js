@@ -67,12 +67,13 @@ class App extends React.Component {
       });
     }
     const bleMessageSource = new BleMessageSource()
-    bleMessageSource.registerOnDeviceFound((name, addr, rssi) => {
-      if (name === "consider it Aftermarket V2X") {
-        bleMessageSource.connectToObu(addr)
-      }
-    })
+    bleMessageSource.registerOnDeviceFound(console.log)
+    bleMessageSource.registerOnDeviceSubscribed(console.log)
     bleMessageSource.scanForObu()
+  }
+
+  componentWillUnmount() {
+    bleMessageSource.disconnect()
   }
 
   render() {

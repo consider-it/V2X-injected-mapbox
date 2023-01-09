@@ -10,6 +10,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
 
+import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContext;
@@ -397,8 +398,16 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
     public void removeListeners(Integer count) {
         listenerCount -= count;
         if (listenerCount == 0) {
+            disconnect();
             mReactContext.unbindService(bleConnection);
             bleServiceBound = false;
+        }
+    }
+
+    @ReactMethod
+    public void disconnect() {
+        if (bleServiceBound && bleService != null) {
+            bleService.disconnect();
         }
     }
 
@@ -450,21 +459,32 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
                                         HmiInterface.GlosaMessage.parseFrom(payload);
                                 Log.d("InjectedMaps", "updateChara: " + glosa.toString());
                                 break;
-                            case BleService.BLE_DENM_UUID:
+                            case BleService.BLE_DENM_UUID: {
                                 HmiInterface.SimpleDenm denm =
                                         HmiInterface.SimpleDenm.parseFrom(payload);
-                                Log.d("InjectedMaps", "updateChara: " + denm.toString());
+                                WritableMap params = Arguments.createMap();
+                                params.putInt("causeCode", denm.getCauseCode());
+                                params.putInt("subCauseCode", denm.getSubCauseCode());
+                                params.putDouble("latitude", denm.getPosition().getLatitude());
+                                params.putDouble("longitude", denm.getPosition().getLongitude());
+                                sendEvent("DENM", params);
+                            };
                                 break;
                             case BleService.BLE_CAM_UUID:
                                 HmiInterface.SimpleCam cam =
                                         HmiInterface.SimpleCam.parseFrom(payload);
                                 Log.d("InjectedMaps", "updateChara: " + cam.toString());
                                 break;
-                            case BleService.OBU_POS_UUID:
+                            case BleService.OBU_POS_UUID: {
                                 HmiInterface.SimpleCam obu =
                                         HmiInterface.SimpleCam.parseFrom(payload);
-                                Log.d("InjectedMaps", "updateChara: " + obu.toString());
-                                break;
+                                WritableMap params = Arguments.createMap();
+                                params.putInt("heading", obu.getDegreesHeading());
+                                params.putInt("vehicleRole", obu.getVehicleRole().getNumber());
+                                params.putDouble("latitude", obu.getPosition().getLatitude());
+                                params.putDouble("longitude", obu.getPosition().getLongitude());
+                                sendEvent("OBU_INFO", params);
+                            }; break;
                         }
                     } catch (InvalidProtocolBufferException e) {
                         Log.e("InjectedMaps", "updateChara: ", e);
