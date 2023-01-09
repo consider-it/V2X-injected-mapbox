@@ -1,5 +1,8 @@
 package com.mapbox.rctmgl.components.mapview;
 
+import android.animation.ObjectAnimator;
+import android.animation.TypeEvaluator;
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
@@ -179,6 +182,13 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
     private LocationComponentManager mLocationComponentManager = null;
 
     private @Nullable Integer mTintColor = null;
+
+    // V2X CORE
+
+    private Pair<Long, ObuInfo> lastObuUpdate;
+    private ValueAnimator obuAnimator;
+
+    // END V2X CORE
 
     public RCTMGLMapView(Context context, RCTMGLMapViewManager manager, MapboxMapOptions options) {
         super(context, options);
@@ -1548,6 +1558,21 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
         mLocationComponentManager.update(getMapboxMap().getStyle());
     }
 
+    public class ObuInfoEvaluator implements TypeEvaluator<ObuInfo> {
+        public ObuInfo evaluate(float fraction, ObuInfo startValue, ObuInfo endValue) {
+            double deltaLon = endValue.getLon() - startValue.getLon();
+            double deltaLat = endValue.getLat() - startValue.getLat();
+            double deltaHeading = endValue.getHeading() - startValue.getHeading();
+            return new ObuInfo(
+                    startValue.getLon() + deltaLon * (double) fraction,
+                    startValue.getLat() + deltaLat * (double) fraction,
+                    startValue.getHeading() + deltaHeading * (double) fraction,
+                    startValue.getKphSpeed(),
+                    startValue.getTime()
+            );
+        }
+    }
+
     private void initV2xLayers(Style style) {
         for (Pair<String, Integer> asset : v2xImageAssets()) {
             Bitmap icon = com.mapbox.mapboxsdk.utils.BitmapUtils.getBitmapFromDrawable(
@@ -1559,10 +1584,32 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
         GeoJsonSource refPointSrc = new GeoJsonSource("ref-point-src");
         GeoJsonSource denmSrc = new GeoJsonSource("denm-src");
         GeoJsonSource camSrc = new GeoJsonSource("cam-src");
+        GeoJsonSource obuPosSrc = new GeoJsonSource("obu-pos-src");
 
         style.addSource(refPointSrc);
         style.addSource(denmSrc);
         style.addSource(camSrc);
+        style.addSource(obuPosSrc);
+
+        RCTMGLModule.registeredObuCallback = update -> {
+            ((ThemedReactContext) mContext).getCurrentActivity().runOnUiThread(() -> {
+                if (lastObuUpdate != null) {
+                    if (obuAnimator != null) obuAnimator.cancel();
+                    obuAnimator = ObjectAnimator.ofObject(new ObuInfoEvaluator(), lastObuUpdate.second, update);
+                    obuAnimator.setDuration(System.currentTimeMillis() - lastObuUpdate.first);
+                    obuAnimator.addUpdateListener((ValueAnimator.AnimatorUpdateListener) valueAnimator -> ((ThemedReactContext) mContext).runOnUiQueueThread(() -> {
+                        obuPosSrc.setGeoJson(((ObuInfo) valueAnimator.getAnimatedValue()).toJson());
+                    }));
+                    obuAnimator.start();
+                    lastObuUpdate = new Pair(System.currentTimeMillis(), update);
+                } else {
+                    ((ThemedReactContext) mContext).runOnUiQueueThread(() -> {
+                        obuPosSrc.setGeoJson(update.toJson());
+                    });
+                    lastObuUpdate = new Pair(System.currentTimeMillis(), update);
+                }
+            });
+        };
 
         SymbolLayer refPointLayer = new SymbolLayer("ref-point-layer", "ref-point-src");
         SymbolLayer denmLayer = new SymbolLayer("denm-layer", "denm-src");
@@ -1657,12 +1704,21 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
                 iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
                 iconRotate(get("degreesHeading"))
         );
-        
-        
+        obuPosLayer.setProperties(
+                iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_MAP),
+                iconAllowOverlap(true),
+                symbolSortKey(8.5f),
+                iconImage("obu-pos"),
+                iconSize(0.18f),
+                iconRotate(get("heading")),
+                iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP)
+        );
+
         style.addLayer(refPointLayer);
         style.addLayer(camPathLayer);
         style.addLayer(camLayer);
         style.addLayer(denmPathLayer);
+        style.addLayer(obuPosLayer);
         style.addLayer(denmLayer);
     }
 
@@ -1706,7 +1762,8 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
                 new Pair("cpm-anm", R.drawable.class_animal),
                 new Pair("cpm-vhc", R.drawable.class_vehicle),
                 new Pair("cpm-per", R.drawable.class_person),
-                new Pair("empty", R.drawable.empty_drawable)
+                new Pair("empty", R.drawable.empty_drawable),
+                new Pair("obu-pos", R.drawable.obu_pos_icon)
         );
     }
 }
