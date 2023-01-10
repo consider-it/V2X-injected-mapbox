@@ -1,5 +1,4 @@
 #include <stdexcept>
-#include <android/log.h>
 
 #include "RnCore.h"
 
@@ -13,28 +12,6 @@ char *const TOPIC_CPM = "v2x/rx/cpm";
 char *const TOPIC_IVIM = "v2x/rx/ivim";
 char *const TOPIC_DENM_LOOPBACK = "v2x/loopback/denm";
 char *const TOPIC_CPM_LOOPBACK = "v2x/loopback/cpm";
-
-void android_log(void *user_data, const loguru::Message &message)
-{
-	switch (message.verbosity)
-	{
-	case loguru::Verbosity_ERROR:
-		__android_log_print(ANDROID_LOG_ERROR, TAG, "%s%s%s", message.preamble, message.prefix, message.message);
-		break;
-	case loguru::Verbosity_WARNING:
-		__android_log_print(ANDROID_LOG_WARN, TAG, "%s%s%s", message.preamble, message.prefix, message.message);
-		break;
-	case loguru::Verbosity_INFO:
-		__android_log_print(ANDROID_LOG_INFO, TAG, "%s%s%s", message.preamble, message.prefix, message.message);
-		break;
-	case loguru::Verbosity_MAX:
-		__android_log_print(ANDROID_LOG_VERBOSE, TAG, "%s%s%s", message.preamble, message.prefix, message.message);
-		break;
-	default:
-		__android_log_print(ANDROID_LOG_DEBUG, TAG, "%s%s%s", message.preamble, message.prefix, message.message);
-		break;
-	}
-}
 
 bool CIT::RnCore::isConnected = false;
 int reconnectionAttemptCount = 0;
@@ -52,7 +29,7 @@ CIT::RnCore::RnCore(std::string &serverHostname, int serverPort) : brokerHostnam
 	loguru::g_preamble_pipe = false;	// The pipe symbol right before the message
 
 	loguru::remove_all_callbacks();
-	loguru::add_callback("android_logger", android_log, nullptr, loguru::Verbosity_INFO);
+	//loguru::add_callback("android_logger", android_log, nullptr, loguru::Verbosity_INFO);
 	loguru::g_stderr_verbosity = loguru::Verbosity_INFO;
 
 	mosquitto_lib_init();
