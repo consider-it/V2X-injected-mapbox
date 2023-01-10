@@ -41,7 +41,7 @@ import Logger from './utils/Logger';
 
 const MapboxGL = {...NativeModules.MGLModule};
 
-const eventEmitter = new NativeEventEmitter(NativeModules.RnCore);
+const eventEmitter = new NativeEventEmitter(NativeModules.MGLModule);
 
 MapboxGL.registerGeojsonCallback = (callback) => {
   eventEmitter.addListener('GEOJSON', ({ type, geoJSON }) => {

@@ -23,6 +23,21 @@ RCT_EXPORT_MODULE();
     return YES;
 }
 
+
+// Will be called when this module's first listener is added.
+-(void)startObserving {
+    // Set up any upstream listeners or background tasks as necessary
+}
+
+// Will be called when this module's last listener is removed, or on dealloc.
+-(void)stopObserving {
+    // Remove upstream listeners, stop unnecessary background tasks
+}
+
+- (NSArray<NSString *> *)supportedEvents {
+    return @[@"GLOSA"];
+}
+
 - (NSDictionary<NSString *, id> *)constantsToExport
 {
     // style urls
