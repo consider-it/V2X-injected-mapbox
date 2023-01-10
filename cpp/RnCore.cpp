@@ -64,7 +64,9 @@ CIT::RnCore::RnCore(std::string &serverHostname, int serverPort) : brokerHostnam
 	}
 
 	mosquitto_message_callback_set(this->client, RnCore::onMessage);
+	mosquitto_connect_callback_set(this->client, RnCore::onConnect);
 	mosquitto_disconnect_callback_set(this->client, RnCore::onDisconnect);
+    //mosquitto_log_callback_set(this->client, RnCore::onLog);
 
 	RnCore::isConnected = false;
 }
@@ -135,19 +137,9 @@ int CIT::RnCore::connect()
 		mosquitto_disconnect(this->client);
 	}
 
-	char *const const topics[] =
-		{TOPIC_SPATEM, TOPIC_OBU_INFO, TOPIC_MAPEM, TOPIC_DENM, TOPIC_CAM, TOPIC_CPM, TOPIC_IVIM, TOPIC_DENM_LOOPBACK, TOPIC_CPM_LOOPBACK};
-	int rcSub = mosquitto_subscribe_multiple(this->client, nullptr, 9, topics, 0, 0, NULL);
-	if (MOSQ_ERR_SUCCESS != rcSub)
-	{
-		LOG_F(ERROR, "Error subscribing to topic 'v2x/rx/#', error code %i", rcSub);
-		mosquitto_loop_stop(this->client, true);
-		mosquitto_disconnect(this->client);
-		return rcSub;
-	}
-
 	return 0;
 }
+
 
 void CIT::RnCore::onMessage(struct mosquitto *mosq, void *coreRef, const struct mosquitto_message *message)
 {
@@ -163,26 +155,28 @@ void CIT::RnCore::onMessage(struct mosquitto *mosq, void *coreRef, const struct 
 	}
 }
 
-// callback function for the MQTT library. Must be a static function!
 void CIT::RnCore::onDisconnect(struct mosquitto *mosq, void *coreRef, int rc)
 {
 	LOG_F(ERROR, "Connection to MQTT broker was lost, reason code %i", rc);
 	RnCore::isConnected = false;
-	RnCore *rnCore = static_cast<RnCore *>(coreRef);
+	auto *rnCore = static_cast<RnCore *>(coreRef);
 	if (MOSQ_ERR_SUCCESS != rc)
 	{
 		LOG_F(ERROR, "Will try to reconnect in 5s ...");
 		std::this_thread::sleep_for(std::chrono::seconds(5));
 		mosquitto_loop_stop(rnCore->client, true);
-		int rcRec = mosquitto_reconnect(rnCore->client);
+		int rcRec = mosquitto_reconnect_async(rnCore->client);
 		if (MOSQ_ERR_SUCCESS != rcRec)
 		{
-			RnCore::isConnected = false;
+            LOG_F(ERROR, "Reconnect failed, reason code %i", rcRec);
+            RnCore::isConnected = false;
 			reconnectionAttemptCount++;
-			if (reconnectionAttemptCount < 100)
-				onDisconnect(mosq, coreRef, rcRec);
-			else
-				reconnectionAttemptCount = 0;
+			if (reconnectionAttemptCount < 100) {
+                onDisconnect(mosq, coreRef, rcRec);
+            } else {
+                reconnectionAttemptCount = 0;
+                LOG_F(ERROR, "Tried reconnecting for 100 times, giving up.");
+            }
 		}
 		else
 		{
@@ -190,4 +184,22 @@ void CIT::RnCore::onDisconnect(struct mosquitto *mosq, void *coreRef, int rc)
 			RnCore::isConnected = true;
 		}
 	}
+}
+
+void CIT::RnCore::onConnect(struct mosquitto *mosq, void *coreRef, int rc) {
+	auto *rnCore = static_cast<RnCore *>(coreRef);
+	char *const const topics[] =
+			{TOPIC_SPATEM, TOPIC_OBU_INFO, TOPIC_MAPEM, TOPIC_DENM, TOPIC_CAM, TOPIC_CPM, TOPIC_IVIM, TOPIC_DENM_LOOPBACK, TOPIC_CPM_LOOPBACK};
+	int rcSub = mosquitto_subscribe_multiple(rnCore->client, nullptr, 9, topics, 0, 0, NULL);
+	if (MOSQ_ERR_SUCCESS != rcSub)
+	{
+		LOG_F(ERROR, "Error subscribing to topic 'v2x/rx/#', error code %i", rcSub);
+		mosquitto_loop_stop(rnCore->client, true);
+		mosquitto_disconnect(rnCore->client);
+	}
+}
+
+
+void CIT::RnCore::onLog(struct mosquitto *mosq, void *obj, int level, const char *str) {
+	LOG_F(INFO, "Mosquitto: %s", str);
 }

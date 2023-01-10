@@ -1703,7 +1703,8 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
         LineLayer camPathLayer = new LineLayer("cam-path-layer", "cam-src");
         FillLayer cpmAreaLayer = new FillLayer("cpm-area-layer", "cpm-area-src");
         SymbolLayer cpmSensorLayer = new SymbolLayer("cpm-sensor-layer", "cpm-sensor-src");
-        FillLayer cpmObjectLayer = new FillLayer("cpm-object-layer", "cpm-object-src");
+        FillLayer cpmObjectOutlineLayer = new FillLayer("cpm-object-outline-layer", "cpm-object-src");
+        SymbolLayer cpmObjectLayer = new SymbolLayer("cpm-object-layer", "cpm-object-src");
         SymbolLayer obuPosLayer = new SymbolLayer("obu-pos-layer", "obu-pos-src");
 
         greenLaneLayer.setProperties(
@@ -1857,7 +1858,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
                 iconImage("cpm-station"),
                 iconSize(0.05f)
         );
-        cpmObjectLayer.setProperties(
+        cpmObjectOutlineLayer.setProperties(
                 fillOpacity(0.8f),
                 fillAntialias(false),
                 fillColor(match(
@@ -1870,6 +1871,19 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
                 fillPattern(match(
                         toNumber(get("classification")),
                         literal("empty"),
+                        stop(1, "cpm-vhc"),
+                        stop(2, "cpm-per"),
+                        stop(3, "cpm-anm")
+                ))
+        );
+        cpmObjectLayer.setProperties(
+                iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_MAP),
+                iconAllowOverlap(true),
+                symbolSortKey(8f),
+                iconSize(0.3f),
+                iconImage(match(
+                        toNumber(get("classification")),
+                        literal("cpm-per"),
                         stop(1, "cpm-vhc"),
                         stop(2, "cpm-per"),
                         stop(3, "cpm-anm")
@@ -1894,6 +1908,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
         style.addLayer(camPathLayer);
         style.addLayer(camLayer);
         style.addLayer(cpmSensorLayer);
+        style.addLayer(cpmObjectOutlineLayer);
         style.addLayer(cpmObjectLayer);
         style.addLayer(denmPathLayer);
         style.addLayer(obuPosLayer);
@@ -1937,6 +1952,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
                 new Pair("denm-stale", R.drawable.warning_stale),
                 new Pair("denm-stn", R.drawable.warning_stationary),
                 new Pair("denm-vru", R.drawable.warning_vru),
+                new Pair("cpm-station", R.drawable.cpm_station_icon),
                 new Pair("cpm-anm", R.drawable.class_animal),
                 new Pair("cpm-vhc", R.drawable.class_vehicle),
                 new Pair("cpm-per", R.drawable.class_person),
