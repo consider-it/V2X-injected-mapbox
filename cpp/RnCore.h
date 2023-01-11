@@ -13,8 +13,10 @@
 #include <NativeCore.h>
 #include <Caches.h>
 
-namespace CIT {
-    class RnCore {
+namespace CIT
+{
+    class RnCore
+    {
     public:
         std::shared_ptr<V2X::NativeCore> core = std::make_shared<V2X::NativeCore>();
 
@@ -30,21 +32,23 @@ namespace CIT {
 
         int connect();
 
-        void switchBroker(std::string &serverHostname);
+        void switchBroker(std::string &serverHostname, int serverPort);
 
         void close();
 
         inline void registerObuInfoCallback(
-                std::function<void(V2X::ObuInfo)> callback) { this->obuCallback = callback; };
+            std::function<void(V2X::ObuInfo)> callback) { this->obuCallback = callback; };
 
         inline void registerGeojsonCallback(Caches::FeatureCollectionType featureCollectionId,
-                                            std::function<void(std::string)> callback) {
+                                            std::function<void(std::string)> callback)
+        {
             this->core->registerGeojsonCallback(featureCollectionId, callback);
         };
 
         inline std::vector<V2X::TlSpat>
         glosa(const GeoJSON::LngLat &ownPos, double heading, unsigned long long obuTimeMs,
-              Intersection::LaneType laneType) {
+              Intersection::LaneType laneType)
+        {
             return this->core->glosa(ownPos, heading, obuTimeMs, laneType);
         };
 
@@ -66,8 +70,6 @@ namespace CIT {
         std::string brokerHostname{};
         int brokerPort{};
         struct mosquitto *client{nullptr};
-
-        int subscribe() const;
     };
 }
 

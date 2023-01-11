@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.11.0)
 
+message(STATUS "BUILDDIR: ${CMAKE_BUILD_DIRECTORY} or ${CMAKE_BUILD_FILES_DIRECTORY}")
 set (CMAKE_VERBOSE_MAKEFILE ON)
 set (CMAKE_CXX_STANDARD 17)
 SET(CMAKE_SHARED_LINKER_FLAGS "-llog")
@@ -22,7 +23,7 @@ SET(WITH_APPS OFF CACHE BOOL "" FORCE)
 SET(WITH_PLUGINS OFF CACHE BOOL "" FORCE)
 SET(DOCUMENTATION OFF CACHE BOOL "" FORCE)
 SET(WITH_STATIC_LIBRARIES ON CACHE BOOL "" FORCE)
-ADD_SUBDIRECTORY(${PROJECT_SOURCE_DIR}/../../cpp/external/mosquitto ${PROJECT_SOURCE_DIR}/src/main/jniLibs/eclipse/mosquitto/${ANDROID_ABI})
+ADD_SUBDIRECTORY(${PROJECT_SOURCE_DIR}/../../cpp/external/mosquitto ${PROJECT_SOURCE_DIR}/build/eclipse/mosquitto/${ANDROID_ABI})
 TARGET_INCLUDE_DIRECTORIES(libmosquitto PUBLIC ${PROJECT_SOURCE_DIR}/../../cpp/external/mosquitto/include)
 
 add_library(cpp
@@ -31,7 +32,7 @@ add_library(cpp
             cpp-adapter.cpp
 )
 
-add_subdirectory(../../cpp/external/V2X-Native_Core ${PROJECT_SOURCE_DIR}/src/main/jniLibs/nativecore/${ANDROID_ABI})
+add_subdirectory(../../cpp/external/V2X-Native_Core ${PROJECT_SOURCE_DIR}/build/nativecore/${ANDROID_ABI})
 
 TARGET_LINK_LIBRARIES(cpp PUBLIC libmosquitto)
 TARGET_LINK_LIBRARIES(cpp PRIVATE libloguru)

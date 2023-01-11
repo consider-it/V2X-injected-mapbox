@@ -127,3 +127,4 @@ react-native-mapbox-gl-maps.tgz
 
 jniLibs/
 .cxx/
+*.tgz

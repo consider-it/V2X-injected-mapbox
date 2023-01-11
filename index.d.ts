@@ -114,8 +114,8 @@ declare namespace MapboxGL {
   function setTelemetryEnabled(telemetryEnabled: boolean): void;
   function setConnected(connected: boolean): void;
   function requestAndroidLocationPermissions(): Promise<boolean>;
-  function initializeV2xCore(mqttHost: string): void;
-  function switchV2xCoreBroker(mqttHost: string): void;
+  function initializeV2xCore(mqttHost: string, mqttPort: number): void;
+  function switchV2xCoreBroker(mqttHost: string, mqttPort: number): void;
   function closeV2xCore(): void;
   function registerGeojsonCallback(
     callback: (type: number, json: string) => void

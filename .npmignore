@@ -34,6 +34,7 @@ android/.gradle/
 android/.idea/
 android/android.iml
 android/gradle/
+android/rctmgl/build
 android/gradlew
 android/gradlew.bat
 android/local.properties
@@ -42,6 +43,8 @@ android/local.properties
 example
 __tests__
 coverage
+cpp
+.cxx
 
 plugin/src
 plugin/jest.config.js

@@ -66,7 +66,7 @@ CIT::RnCore::RnCore(std::string &serverHostname, int serverPort) : brokerHostnam
 	mosquitto_message_callback_set(this->client, RnCore::onMessage);
 	mosquitto_connect_callback_set(this->client, RnCore::onConnect);
 	mosquitto_disconnect_callback_set(this->client, RnCore::onDisconnect);
-    //mosquitto_log_callback_set(this->client, RnCore::onLog);
+	// mosquitto_log_callback_set(this->client, RnCore::onLog);
 
 	RnCore::isConnected = false;
 }
@@ -80,26 +80,15 @@ CIT::RnCore::~RnCore()
 	mosquitto_lib_cleanup();
 }
 
-void CIT::RnCore::switchBroker(std::string &serverHostname)
+void CIT::RnCore::switchBroker(std::string &serverHostname, int serverPort)
 {
 	mosquitto_disconnect(this->client);
-    mosquitto_loop_stop(this->client, true);
-
-	mosquitto_destroy(this->client);
+	mosquitto_loop_stop(this->client, true);
 
 	RnCore::isConnected = false;
 
 	this->brokerHostname = std::move(serverHostname);
-
-	this->client = mosquitto_new(NULL, true, this);
-	if (nullptr == this->client)
-	{
-		LOG_F(ERROR, "Could not setup MQTT library");
-		throw std::runtime_error("MQTT library setup: Out of memory");
-	}
-
-	mosquitto_message_callback_set(this->client, RnCore::onMessage);
-	mosquitto_disconnect_callback_set(this->client, RnCore::onDisconnect);
+	this->brokerPort = serverPort;
 
 	this->connect();
 }
@@ -140,7 +129,6 @@ int CIT::RnCore::connect()
 	return 0;
 }
 
-
 void CIT::RnCore::onMessage(struct mosquitto *mosq, void *coreRef, const struct mosquitto_message *message)
 {
 	RnCore *rnCore = static_cast<RnCore *>(coreRef);
@@ -168,15 +156,18 @@ void CIT::RnCore::onDisconnect(struct mosquitto *mosq, void *coreRef, int rc)
 		int rcRec = mosquitto_reconnect_async(rnCore->client);
 		if (MOSQ_ERR_SUCCESS != rcRec)
 		{
-            LOG_F(ERROR, "Reconnect failed, reason code %i", rcRec);
-            RnCore::isConnected = false;
+			LOG_F(ERROR, "Reconnect failed, reason code %i", rcRec);
+			RnCore::isConnected = false;
 			reconnectionAttemptCount++;
-			if (reconnectionAttemptCount < 100) {
-                onDisconnect(mosq, coreRef, rcRec);
-            } else {
-                reconnectionAttemptCount = 0;
-                LOG_F(ERROR, "Tried reconnecting for 100 times, giving up.");
-            }
+			if (reconnectionAttemptCount < 100)
+			{
+				onDisconnect(mosq, coreRef, rcRec);
+			}
+			else
+			{
+				reconnectionAttemptCount = 0;
+				LOG_F(ERROR, "Tried reconnecting for 100 times, giving up.");
+			}
 		}
 		else
 		{
@@ -186,10 +177,11 @@ void CIT::RnCore::onDisconnect(struct mosquitto *mosq, void *coreRef, int rc)
 	}
 }
 
-void CIT::RnCore::onConnect(struct mosquitto *mosq, void *coreRef, int rc) {
+void CIT::RnCore::onConnect(struct mosquitto *mosq, void *coreRef, int rc)
+{
 	auto *rnCore = static_cast<RnCore *>(coreRef);
 	char *const const topics[] =
-			{TOPIC_SPATEM, TOPIC_OBU_INFO, TOPIC_MAPEM, TOPIC_DENM, TOPIC_CAM, TOPIC_CPM, TOPIC_IVIM, TOPIC_DENM_LOOPBACK, TOPIC_CPM_LOOPBACK};
+		{TOPIC_SPATEM, TOPIC_OBU_INFO, TOPIC_MAPEM, TOPIC_DENM, TOPIC_CAM, TOPIC_CPM, TOPIC_IVIM, TOPIC_DENM_LOOPBACK, TOPIC_CPM_LOOPBACK};
 	int rcSub = mosquitto_subscribe_multiple(rnCore->client, nullptr, 9, topics, 0, 0, NULL);
 	if (MOSQ_ERR_SUCCESS != rcSub)
 	{
@@ -199,7 +191,7 @@ void CIT::RnCore::onConnect(struct mosquitto *mosq, void *coreRef, int rc) {
 	}
 }
 
-
-void CIT::RnCore::onLog(struct mosquitto *mosq, void *obj, int level, const char *str) {
+void CIT::RnCore::onLog(struct mosquitto *mosq, void *obj, int level, const char *str)
+{
 	LOG_F(INFO, "Mosquitto: %s", str);
 }

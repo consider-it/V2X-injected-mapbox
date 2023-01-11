@@ -69,11 +69,11 @@ void sendGeoJSONToJava(int fcType, std::string &geojson)
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_mapbox_rctmgl_modules_RCTMGLModule_nativeInit(JNIEnv *env, jobject callingObject, jstring brokerUri)
+Java_com_mapbox_rctmgl_modules_RCTMGLModule_nativeInit(JNIEnv *env, jobject callingObject, jstring mqttHost, jint mqttPort)
 {
     env->GetJavaVM(&jvm);
-    std::string uri{env->GetStringUTFChars(brokerUri, NULL)};
-    core = std::make_shared<CIT::RnCore>(uri, 1883);
+    std::string uri{env->GetStringUTFChars(mqttHost, NULL)};
+    core = std::make_shared<CIT::RnCore>(uri, mqttPort);
     rnCoreModuleInstance = env->NewGlobalRef(callingObject);
     jclass rnCoreModule = env->GetObjectClass(rnCoreModuleInstance);
     obuInfoCb = env->GetMethodID(rnCoreModule, "javaObuInfoCallback", "(DDDDD)V");
@@ -107,10 +107,10 @@ Java_com_mapbox_rctmgl_modules_RCTMGLModule_nativeInit(JNIEnv *env, jobject call
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_mapbox_rctmgl_modules_RCTMGLModule_nativeSwitchBroker(JNIEnv *env, jobject callingObject, jstring brokerUri)
+Java_com_mapbox_rctmgl_modules_RCTMGLModule_nativeSwitchBroker(JNIEnv *env, jobject callingObject, jstring mqttHost, jint mqttPort)
 {
-    std::string uri{env->GetStringUTFChars(brokerUri, NULL)};
-    core->switchBroker(uri);
+    std::string uri{env->GetStringUTFChars(mqttHost, NULL)};
+    core->switchBroker(uri, mqttPort);
 }
 
 extern "C" JNIEXPORT void JNICALL

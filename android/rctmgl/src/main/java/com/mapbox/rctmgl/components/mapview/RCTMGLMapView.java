@@ -851,6 +851,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
                     @Override
                     public void onStyleLoaded(@NonNull Style style) {
                         addAllSourcesToMap();
+                        initV2xLayers(style);
                     }
                 });
             }

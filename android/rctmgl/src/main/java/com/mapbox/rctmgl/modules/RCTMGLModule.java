@@ -387,9 +387,9 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
         System.loadLibrary("cpp");
     }
 
-    public native void nativeInit(String brokerUri);
+    public native void nativeInit(String mqttHost, int mqttPort);
 
-    public native void nativeSwitchBroker(String brokerUri);
+    public native void nativeSwitchBroker(String mqttHost, int mqttPort);
 
     public native TlSpat[] nativeGlosa(double lon, double lat, double heading, double obuTime, int laneType);
 
@@ -400,7 +400,11 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void addListener(String eventName) {
         if (eventName.equals("GLOSA")) {
-            glosaTimer.purge();
+            try {
+                glosaTimer.purge();
+            } catch (Throwable e) {
+                ;
+            }
             glosaTimer.scheduleAtFixedRate(this.glosaTask, 0, 1000);
         }
 
@@ -416,8 +420,8 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void initializeV2xCore(String brokerUri) {
-        nativeInit(brokerUri);
+    public void initializeV2xCore(String mqttHost, int mqttPort) {
+        nativeInit(mqttHost, mqttPort);
         updateTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
@@ -428,14 +432,18 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void closeV2xCore() {
-        updateTimer.cancel();
-        glosaTimer.cancel();
+        try {
+            updateTimer.cancel();
+            glosaTimer.cancel();
+        } catch (Throwable e) {
+            ;
+        }
         nativeClose();
     }
 
     @ReactMethod
-    public void switchV2xCoreBroker(String brokerUri) {
-        nativeSwitchBroker(brokerUri);
+    public void switchV2xCoreBroker(String mqttHost, int mqttPort) {
+        nativeSwitchBroker(mqttHost, mqttPort);
     }
 
     private final TimerTask glosaTask = new TimerTask() {
@@ -470,7 +478,7 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
         params.putString("obuInfo", lastObuInfo.toJson());
         sendEvent("OBU_INFO", params);
         if (registeredObuCallback != null)
-        registeredObuCallback.accept(lastObuInfo);
+            registeredObuCallback.accept(lastObuInfo);
     }
 
     void javaGeoJSONCallback(int featureCollectionType, byte[] utf8Geojson) {

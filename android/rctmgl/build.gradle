@@ -21,7 +21,8 @@ android {
             }
         }
     }
-     externalNativeBuild {
+
+    externalNativeBuild {
         cmake {
             version "3.18.1"
             path "CMakeLists.txt"
@@ -35,6 +36,7 @@ android {
 
     buildTypes {
         release {
+            debuggable true
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
