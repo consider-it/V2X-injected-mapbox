@@ -8,6 +8,7 @@
 
 #import <Foundation/Foundation.h>
 #import <React/RCTBridgeModule.h>
+#import <React/RCTEventEmitter.h>
 
-@interface MGLModule : NSObject<RCTBridgeModule>
+@interface MGLModule : RCTEventEmitter<RCTBridgeModule>
 @end
