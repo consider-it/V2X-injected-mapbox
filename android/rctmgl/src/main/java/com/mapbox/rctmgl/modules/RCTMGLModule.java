@@ -381,6 +381,7 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
     public static Consumer<Pair<Integer, String>> registeredGeojsonCallback;
     public static Consumer<ObuInfo> registeredObuCallback;
     private ObuInfo lastObuInfo;
+    private boolean fetchingGlosa;
     private ScheduledExecutorService scheduler;
     private int listenerCount = 0;
 
@@ -390,8 +391,6 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
 
     public native void nativeInit(String mqttHost, int mqttPort);
 
-    public native void nativeSwitchBroker(String mqttHost, int mqttPort);
-
     public native TlSpat[] nativeGlosa(double lon, double lat, double heading, double obuTime, int laneType);
 
     public native void nativeUpdateCache();
@@ -400,7 +399,8 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void addListener(String eventName) {
-        if (eventName.equals("GLOSA") && listenerCount == 0) {
+        if (eventName.equals("GLOSA") && !this.fetchingGlosa) {
+            this.fetchingGlosa = true;
             scheduler.scheduleAtFixedRate(this.glosaTask, 0, 1000, TimeUnit.MILLISECONDS);
         }
 
@@ -435,7 +435,8 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void switchV2xCoreBroker(String mqttHost, int mqttPort) {
-        nativeSwitchBroker(mqttHost, mqttPort);
+        nativeClose();
+        nativeInit(mqttHost, mqttPort);
     }
 
     private final TimerTask glosaTask = new TimerTask() {

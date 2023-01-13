@@ -19,26 +19,33 @@ void android_log(void *user_data, const loguru::Message &message)
 	switch (message.verbosity)
 	{
 	case loguru::Verbosity_ERROR:
-		__android_log_print(ANDROID_LOG_ERROR, TAG, "%s%s%s", message.preamble, message.prefix, message.message);
+		__android_log_print(ANDROID_LOG_ERROR, TAG, "%s%s%s", message.preamble, message.prefix,
+							message.message);
 		break;
 	case loguru::Verbosity_WARNING:
-		__android_log_print(ANDROID_LOG_WARN, TAG, "%s%s%s", message.preamble, message.prefix, message.message);
+		__android_log_print(ANDROID_LOG_WARN, TAG, "%s%s%s", message.preamble, message.prefix,
+							message.message);
 		break;
 	case loguru::Verbosity_INFO:
-		__android_log_print(ANDROID_LOG_INFO, TAG, "%s%s%s", message.preamble, message.prefix, message.message);
+		__android_log_print(ANDROID_LOG_INFO, TAG, "%s%s%s", message.preamble, message.prefix,
+							message.message);
 		break;
 	case loguru::Verbosity_MAX:
-		__android_log_print(ANDROID_LOG_VERBOSE, TAG, "%s%s%s", message.preamble, message.prefix, message.message);
+		__android_log_print(ANDROID_LOG_VERBOSE, TAG, "%s%s%s", message.preamble,
+							message.prefix, message.message);
 		break;
 	default:
-		__android_log_print(ANDROID_LOG_DEBUG, TAG, "%s%s%s", message.preamble, message.prefix, message.message);
+		__android_log_print(ANDROID_LOG_DEBUG, TAG, "%s%s%s", message.preamble, message.prefix,
+							message.message);
 		break;
 	}
 }
 
 int reconnectionAttemptCount = 0;
 
-CIT::RnCore::RnCore(std::string &serverHostname, int serverPort) : brokerHostname{std::move(serverHostname)}, brokerPort{serverPort}
+CIT::RnCore::RnCore(std::string &serverHostname, int serverPort) : brokerHostname{
+																	   std::move(serverHostname)},
+																   brokerPort{serverPort}
 {
 	// setting up loguru to pass logs on to Android's logcat tool
 	loguru::g_preamble_header = false;
@@ -61,23 +68,6 @@ CIT::RnCore::RnCore(std::string &serverHostname, int serverPort) : brokerHostnam
 		LOG_F(ERROR, "Could not setup MQTT library");
 		throw std::runtime_error("MQTT library setup: Out of memory");
 	}
-
-	if (!this->isLooping)
-	{
-		int rcLoop = mosquitto_loop_start(this->client);
-
-		if (MOSQ_ERR_SUCCESS != rcLoop)
-		{
-			LOG_F(ERROR, "Could not run MQTT network loop, return code %d", rcLoop);
-		}
-
-		this->isLooping = true;
-	}
-
-	mosquitto_message_callback_set(this->client, RnCore::onMessage);
-	mosquitto_connect_callback_set(this->client, RnCore::onConnect);
-	mosquitto_disconnect_callback_set(this->client, RnCore::onDisconnect);
-	mosquitto_log_callback_set(this->client, RnCore::onLog);
 }
 
 CIT::RnCore::~RnCore()
@@ -86,43 +76,61 @@ CIT::RnCore::~RnCore()
 	{
 		mosquitto_disconnect(this->client);
 	}
-	if (this->isLooping)
+	if (this->mosquittoThread.joinable())
 	{
-		mosquitto_loop_stop(this->client, true);
+		this->loopShouldStop = true;
+		this->mosquittoThread.join();
 	}
 
 	mosquitto_destroy(this->client);
 	mosquitto_lib_cleanup();
 }
 
-void CIT::RnCore::switchBroker(std::string &serverHostname, int serverPort)
-{
-	LOG_F(INFO, "Switching to MQTT broker %s", serverHostname.c_str());
-	this->brokerHostname = std::move(serverHostname);
-	this->brokerPort = serverPort;
-
-	if (this->isConnected)
-	{
-		mosquitto_disconnect(this->client);
-	}
-
-	this->connect();
-}
-
 void CIT::RnCore::close()
 {
 	this->core->unregisterGeojsonCallbacks();
 	this->obuCallback = nullptr;
+	if (this->isConnected)
+	{
+		mosquitto_disconnect(this->client);
+	}
+	if (this->mosquittoThread.joinable())
+	{
+		this->loopShouldStop = true;
+		this->mosquittoThread.join();
+	}
 }
 
 void CIT::RnCore::connect()
 {
-	this->isConnecting = true;
-	mosquitto_connect_async(this->client, this->brokerHostname.c_str(), this->brokerPort, 10);
-	// use custom loop https://github.com/eclipse/mosquitto/issues/2335
+	if (this->mosquittoThread.joinable())
+	{
+		this->loopShouldStop = true;
+		this->mosquittoThread.join();
+	}
+	this->mosquittoThread = std::thread([this]
+										{
+        mosquitto_threaded_set(this->client, true);
+		
+		mosquitto_message_callback_set(this->client, RnCore::onMessage);
+		mosquitto_connect_callback_set(this->client, RnCore::onConnect);
+		mosquitto_disconnect_callback_set(this->client, RnCore::onDisconnect);
+		// mosquitto_log_callback_set(this->client, RnCore::onLog);
+
+        int rc = mosquitto_connect_async(this->client, this->brokerHostname.c_str(),
+                                         this->brokerPort,
+                                         5);
+        if (MOSQ_ERR_SUCCESS != rc) {
+            LOG_F(INFO, "Connection to MQTT broker failed, reason code %i", rc);
+        }
+        while (!this->loopShouldStop) {
+            mosquitto_loop(this->client, -1, 1);
+            std::this_thread::sleep_for(std::chrono::microseconds(20));
+        } });
 }
 
-void CIT::RnCore::onMessage(struct mosquitto *mosq, void *coreRef, const struct mosquitto_message *message)
+void CIT::RnCore::onMessage(struct mosquitto *mosq, void *coreRef,
+							const struct mosquitto_message *message)
 {
 	RnCore *rnCore = static_cast<RnCore *>(coreRef);
 	if (strcmp(message->topic, "v2x/rx/obuinfo") == 0 && rnCore->obuCallback != nullptr)
@@ -150,12 +158,12 @@ void CIT::RnCore::onDisconnect(struct mosquitto *mosq, void *coreRef, int rc)
 void CIT::RnCore::onConnect(struct mosquitto *mosq, void *coreRef, int rc)
 {
 	auto *rnCore = static_cast<RnCore *>(coreRef);
-	rnCore->isConnecting = false;
 	rnCore->isConnected = true;
 	LOG_F(INFO, "Connected to MQTT broker %s", rnCore->brokerHostname.c_str());
 
 	char *const const topics[] =
-		{TOPIC_SPATEM, TOPIC_OBU_INFO, TOPIC_MAPEM, TOPIC_DENM, TOPIC_CAM, TOPIC_CPM, TOPIC_IVIM, TOPIC_DENM_LOOPBACK, TOPIC_CPM_LOOPBACK};
+		{TOPIC_SPATEM, TOPIC_OBU_INFO, TOPIC_MAPEM, TOPIC_DENM, TOPIC_CAM, TOPIC_CPM,
+		 TOPIC_IVIM, TOPIC_DENM_LOOPBACK, TOPIC_CPM_LOOPBACK};
 	mosquitto_subscribe_multiple(rnCore->client, nullptr, 9, topics, 0, 0, NULL);
 
 	if (rnCore->onBrokerConnected != nullptr)

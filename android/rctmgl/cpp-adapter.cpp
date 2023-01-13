@@ -132,13 +132,6 @@ Java_com_mapbox_rctmgl_modules_RCTMGLModule_nativeInit(JNIEnv *env, jobject call
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_mapbox_rctmgl_modules_RCTMGLModule_nativeSwitchBroker(JNIEnv *env, jobject callingObject, jstring mqttHost, jint mqttPort)
-{
-    std::string uri{env->GetStringUTFChars(mqttHost, NULL)};
-    core->switchBroker(uri, mqttPort);
-}
-
-extern "C" JNIEXPORT void JNICALL
 Java_com_mapbox_rctmgl_modules_RCTMGLModule_nativeUpdateCache(JNIEnv *env, jobject thiz)
 {
     core->updateCache();

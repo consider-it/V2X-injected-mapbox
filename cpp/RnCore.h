@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <thread>
+#include <atomic>
 #include <functional>
 
 #include <mosquitto.h>
@@ -31,8 +32,6 @@ namespace CIT
         RnCore(std::string &serverHostname, int serverPort);
 
         void connect();
-
-        void switchBroker(std::string &serverHostname, int serverPort);
 
         void close();
 
@@ -68,9 +67,9 @@ namespace CIT
         static void onConnect(struct mosquitto *mosq, void *coreRef, int rc);
 
         bool isConnected = false;
-        bool isConnecting = false;
-        bool isLooping = false;
 
+        std::atomic_bool loopShouldStop{false};
+        std::thread mosquittoThread;
         std::function<void(V2X::ObuInfo)> obuCallback;
         std::function<void(int)> onBrokerConnected;
         std::string brokerHostname{};

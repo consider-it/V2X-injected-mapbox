@@ -6,7 +6,7 @@ rm ./android/rctmgl/src/main/jniLibs/x86/*.so
 rm ./android/rctmgl/src/main/jniLibs/x86_64/*.so
 
 cd example/android
-#./gradlew clean
+./gradlew clean
 ./gradlew build
 cd ../..
 
