@@ -80,6 +80,10 @@ void sendConnectedToJava(int state)
         {
             __android_log_print(ANDROID_LOG_ERROR, "RnCore", "Failed to attach");
         }
+        else
+        {
+            mosquittoEnv->CallVoidMethod(rnCoreModuleInstance, connectedCb, state);
+        }
     }
     else if (getEnvStat == JNI_OK)
     {

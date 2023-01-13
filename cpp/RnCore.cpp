@@ -111,17 +111,20 @@ void CIT::RnCore::connect()
 	this->mosquittoThread = std::thread([this]
 										{
         mosquitto_threaded_set(this->client, true);
-		
-		mosquitto_message_callback_set(this->client, RnCore::onMessage);
-		mosquitto_connect_callback_set(this->client, RnCore::onConnect);
-		mosquitto_disconnect_callback_set(this->client, RnCore::onDisconnect);
-		// mosquitto_log_callback_set(this->client, RnCore::onLog);
+
+        mosquitto_message_callback_set(this->client, RnCore::onMessage);
+        mosquitto_connect_callback_set(this->client, RnCore::onConnect);
+        mosquitto_disconnect_callback_set(this->client, RnCore::onDisconnect);
+        //mosquitto_log_callback_set(this->client, RnCore::onLog);
 
         int rc = mosquitto_connect_async(this->client, this->brokerHostname.c_str(),
                                          this->brokerPort,
                                          5);
         if (MOSQ_ERR_SUCCESS != rc) {
-            LOG_F(INFO, "Connection to MQTT broker failed, reason code %i", rc);
+            LOG_F(INFO, "Connection to MQTT broker failed, reason code %i.", rc);
+            if (this->onBrokerConnected != nullptr) {
+				this->onBrokerConnected(rc);
+			}
         }
         while (!this->loopShouldStop) {
             mosquitto_loop(this->client, -1, 1);
@@ -151,7 +154,7 @@ void CIT::RnCore::onDisconnect(struct mosquitto *mosq, void *coreRef, int rc)
 	rnCore->isConnected = false;
 	if (rnCore->onBrokerConnected != nullptr)
 	{
-		rnCore->onBrokerConnected(1);
+		rnCore->onBrokerConnected(rc);
 	}
 }
 
@@ -168,7 +171,7 @@ void CIT::RnCore::onConnect(struct mosquitto *mosq, void *coreRef, int rc)
 
 	if (rnCore->onBrokerConnected != nullptr)
 	{
-		rnCore->onBrokerConnected(0);
+		rnCore->onBrokerConnected(rc);
 	}
 }
 

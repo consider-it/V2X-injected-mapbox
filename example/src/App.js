@@ -66,7 +66,8 @@ class App extends React.Component {
         isFetchingAndroidPermission: false,
       });
     }
-    MapboxGL.initializeV2xCore("172.25.0.5", 1883);
+    MapboxGL.initializeV2xCore("test.mosquitto.org", 1883);
+  
     let i = 0;
     setInterval(() => {
       MapboxGL.switchV2xCoreBroker(["test.mosquitto.org", "172.25.0.5", "mqtt.sysinnov.consider-it.de"][i % 3], 1883)

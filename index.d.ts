@@ -124,7 +124,7 @@ declare namespace MapboxGL {
   function registerGlosaCallback(callback: (json: string) => void): void;
   function registerDenmCallback(callback: (json: string) => void): void;
   function registerCpmCallback(callback: () => void): void;
-  function registerMqttConnectionCallback(callback: (state: string) => void): void;
+  function registerMqttConnectionCallback(callback: (state: number) => void): void;
   function unregisterGeojsonCallback(): void;
   function unregisterObuPosCallback(): void;
   function unregisterGlosaCallback(): void;

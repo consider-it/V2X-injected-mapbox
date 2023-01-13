@@ -40,6 +40,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -381,9 +382,12 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
     public static Consumer<Pair<Integer, String>> registeredGeojsonCallback;
     public static Consumer<ObuInfo> registeredObuCallback;
     private ObuInfo lastObuInfo;
-    private boolean fetchingGlosa;
+    private boolean fetchingGlosa = false;
     private ScheduledExecutorService scheduler;
     private int listenerCount = 0;
+    private ScheduledFuture<?> scheduledRetrial;
+    private String mqttHost;
+    private int mqttPort;
 
     static {
         System.loadLibrary("cpp");
@@ -417,6 +421,8 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void initializeV2xCore(String mqttHost, int mqttPort) {
+        this.mqttPort = mqttPort;
+        this.mqttHost = mqttHost;
         scheduler = Executors.newScheduledThreadPool(1);
         nativeInit(mqttHost, mqttPort);
         scheduler.scheduleAtFixedRate(() -> {
@@ -435,6 +441,11 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void switchV2xCoreBroker(String mqttHost, int mqttPort) {
+        if (scheduledRetrial != null) {
+            scheduledRetrial.cancel(false);
+        }
+        this.mqttPort = mqttPort;
+        this.mqttHost = mqttHost;
         nativeClose();
         nativeInit(mqttHost, mqttPort);
     }
@@ -476,8 +487,16 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
 
     void javaConnectedCallback(int state) {
         WritableMap params = Arguments.createMap();
-        params.putString("connectionState", state == 0 ? "connected" : "disconnected");
+        params.putInt("connectionState", state);
         sendEvent("MQTT_CONNECT", params);
+        if (state != 0) {
+            this.scheduledRetrial = scheduler.schedule(() -> {
+                this.scheduledRetrial = null;
+                this.mReactContext.runOnUiQueueThread(() -> {
+                    switchV2xCoreBroker(this.mqttHost, this.mqttPort);
+                });
+            }, 2, TimeUnit.SECONDS);
+        }
     }
 
     void javaGeoJSONCallback(int featureCollectionType, byte[] utf8Geojson) {
