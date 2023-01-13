@@ -38,6 +38,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
@@ -377,10 +380,8 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
     // ==========================================================================================
     public static Consumer<Pair<Integer, String>> registeredGeojsonCallback;
     public static Consumer<ObuInfo> registeredObuCallback;
-    public static final String GLOSA_CALLBACK_TOKEN = "GLOSA";
     private ObuInfo lastObuInfo;
-    private final Timer glosaTimer = new Timer();
-    private final Timer updateTimer = new Timer();
+    private ScheduledExecutorService scheduler;
     private int listenerCount = 0;
 
     static {
@@ -399,13 +400,8 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void addListener(String eventName) {
-        if (eventName.equals("GLOSA")) {
-            try {
-                glosaTimer.purge();
-            } catch (Throwable e) {
-                ;
-            }
-            glosaTimer.scheduleAtFixedRate(this.glosaTask, 0, 1000);
+        if (eventName.equals("GLOSA") && listenerCount == 0) {
+            scheduler.scheduleAtFixedRate(this.glosaTask, 0, 1000, TimeUnit.MILLISECONDS);
         }
 
         listenerCount += 1;
@@ -421,22 +417,18 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void initializeV2xCore(String mqttHost, int mqttPort) {
+        scheduler = Executors.newScheduledThreadPool(1);
         nativeInit(mqttHost, mqttPort);
-        updateTimer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                nativeUpdateCache();
-            }
-        }, 0, 10200);
+        scheduler.scheduleAtFixedRate(() -> {
+            nativeUpdateCache();
+            lastObuInfo = null;
+        }, 0, 10200, TimeUnit.MILLISECONDS);
     }
 
     @ReactMethod
     public void closeV2xCore() {
-        try {
-            updateTimer.cancel();
-            glosaTimer.cancel();
-        } catch (Throwable e) {
-            ;
+        if (!scheduler.isShutdown()) {
+            scheduler.shutdownNow();
         }
         nativeClose();
     }
@@ -481,7 +473,22 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
             registeredObuCallback.accept(lastObuInfo);
     }
 
+    void javaConnectedCallback(int state) {
+        WritableMap params = Arguments.createMap();
+        params.putString("connectionState", state == 0 ? "connected" : "disconnected");
+        sendEvent("MQTT_CONNECT", params);
+    }
+
     void javaGeoJSONCallback(int featureCollectionType, byte[] utf8Geojson) {
+        if (featureCollectionType == 5) {
+            String geojson = new String(utf8Geojson, StandardCharsets.UTF_8);
+            WritableMap params = Arguments.createMap();
+            params.putString("geojson", geojson);
+            sendEvent("DENM", params);
+        }
+        if (featureCollectionType == 8 && (utf8Geojson.length > 60)) {
+            sendEvent("CPM", null);
+        }
         if (registeredGeojsonCallback != null) {
             String geojson = new String(utf8Geojson, StandardCharsets.UTF_8);
             registeredGeojsonCallback.accept(new Pair<>(featureCollectionType, geojson));

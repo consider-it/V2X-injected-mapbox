@@ -30,11 +30,14 @@ namespace CIT
 
         RnCore(std::string &serverHostname, int serverPort);
 
-        int connect();
+        void connect();
 
         void switchBroker(std::string &serverHostname, int serverPort);
 
         void close();
+
+        inline void registerOnConnectCallback(
+            std::function<void(int)> callback) { this->onBrokerConnected = callback; };
 
         inline void registerObuInfoCallback(
             std::function<void(V2X::ObuInfo)> callback) { this->obuCallback = callback; };
@@ -64,9 +67,12 @@ namespace CIT
 
         static void onConnect(struct mosquitto *mosq, void *coreRef, int rc);
 
-        static bool isConnected;
+        bool isConnected = false;
+        bool isConnecting = false;
+        bool isLooping = false;
 
         std::function<void(V2X::ObuInfo)> obuCallback;
+        std::function<void(int)> onBrokerConnected;
         std::string brokerHostname{};
         int brokerPort{};
         struct mosquitto *client{nullptr};

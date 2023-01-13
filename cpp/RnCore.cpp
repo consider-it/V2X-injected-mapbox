@@ -36,7 +36,6 @@ void android_log(void *user_data, const loguru::Message &message)
 	}
 }
 
-bool CIT::RnCore::isConnected = false;
 int reconnectionAttemptCount = 0;
 
 CIT::RnCore::RnCore(std::string &serverHostname, int serverPort) : brokerHostname{std::move(serverHostname)}, brokerPort{serverPort}
@@ -63,18 +62,34 @@ CIT::RnCore::RnCore(std::string &serverHostname, int serverPort) : brokerHostnam
 		throw std::runtime_error("MQTT library setup: Out of memory");
 	}
 
+	if (!this->isLooping)
+	{
+		int rcLoop = mosquitto_loop_start(this->client);
+
+		if (MOSQ_ERR_SUCCESS != rcLoop)
+		{
+			LOG_F(ERROR, "Could not run MQTT network loop, return code %d", rcLoop);
+		}
+
+		this->isLooping = true;
+	}
+
 	mosquitto_message_callback_set(this->client, RnCore::onMessage);
 	mosquitto_connect_callback_set(this->client, RnCore::onConnect);
 	mosquitto_disconnect_callback_set(this->client, RnCore::onDisconnect);
-	// mosquitto_log_callback_set(this->client, RnCore::onLog);
-
-	RnCore::isConnected = false;
+	mosquitto_log_callback_set(this->client, RnCore::onLog);
 }
 
 CIT::RnCore::~RnCore()
 {
-	mosquitto_disconnect(this->client);
-	mosquitto_loop_stop(this->client, true);
+	if (this->isConnected)
+	{
+		mosquitto_disconnect(this->client);
+	}
+	if (this->isLooping)
+	{
+		mosquitto_loop_stop(this->client, true);
+	}
 
 	mosquitto_destroy(this->client);
 	mosquitto_lib_cleanup();
@@ -82,13 +97,14 @@ CIT::RnCore::~RnCore()
 
 void CIT::RnCore::switchBroker(std::string &serverHostname, int serverPort)
 {
-	mosquitto_disconnect(this->client);
-	mosquitto_loop_stop(this->client, true);
-
-	RnCore::isConnected = false;
-
+	LOG_F(INFO, "Switching to MQTT broker %s", serverHostname.c_str());
 	this->brokerHostname = std::move(serverHostname);
 	this->brokerPort = serverPort;
+
+	if (this->isConnected)
+	{
+		mosquitto_disconnect(this->client);
+	}
 
 	this->connect();
 }
@@ -99,34 +115,11 @@ void CIT::RnCore::close()
 	this->obuCallback = nullptr;
 }
 
-int CIT::RnCore::connect()
+void CIT::RnCore::connect()
 {
-	if (RnCore::isConnected)
-	{ // shortcut, if already connected
-		return 0;
-	}
-
-	int rcConn = mosquitto_connect_async(this->client, this->brokerHostname.c_str(), this->brokerPort,
-										 10);
-	if (0 != rcConn)
-	{
-		LOG_F(ERROR, "Could not connect to MQTT broker, return code %d", rcConn);
-		RnCore::isConnected = false;
-		return rcConn;
-	}
-
-	RnCore::isConnected = true;
-
-	int rcLoop = mosquitto_loop_start(this->client);
-
-	if (MOSQ_ERR_SUCCESS != rcLoop)
-	{
-		LOG_F(ERROR, "Could not run MQTT network loop, return code %d", rcLoop);
-		RnCore::isConnected = false;
-		mosquitto_disconnect(this->client);
-	}
-
-	return 0;
+	this->isConnecting = true;
+	mosquitto_connect_async(this->client, this->brokerHostname.c_str(), this->brokerPort, 10);
+	// use custom loop https://github.com/eclipse/mosquitto/issues/2335
 }
 
 void CIT::RnCore::onMessage(struct mosquitto *mosq, void *coreRef, const struct mosquitto_message *message)
@@ -145,49 +138,29 @@ void CIT::RnCore::onMessage(struct mosquitto *mosq, void *coreRef, const struct 
 
 void CIT::RnCore::onDisconnect(struct mosquitto *mosq, void *coreRef, int rc)
 {
-	LOG_F(ERROR, "Connection to MQTT broker was lost, reason code %i", rc);
-	RnCore::isConnected = false;
+	LOG_F(INFO, "Connection to MQTT broker was lost, reason code %i", rc);
 	auto *rnCore = static_cast<RnCore *>(coreRef);
-	if (MOSQ_ERR_SUCCESS != rc)
+	rnCore->isConnected = false;
+	if (rnCore->onBrokerConnected != nullptr)
 	{
-		LOG_F(ERROR, "Will try to reconnect in 5s ...");
-		std::this_thread::sleep_for(std::chrono::seconds(5));
-		mosquitto_loop_stop(rnCore->client, true);
-		int rcRec = mosquitto_reconnect_async(rnCore->client);
-		if (MOSQ_ERR_SUCCESS != rcRec)
-		{
-			LOG_F(ERROR, "Reconnect failed, reason code %i", rcRec);
-			RnCore::isConnected = false;
-			reconnectionAttemptCount++;
-			if (reconnectionAttemptCount < 100)
-			{
-				onDisconnect(mosq, coreRef, rcRec);
-			}
-			else
-			{
-				reconnectionAttemptCount = 0;
-				LOG_F(ERROR, "Tried reconnecting for 100 times, giving up.");
-			}
-		}
-		else
-		{
-			reconnectionAttemptCount = 0;
-			RnCore::isConnected = true;
-		}
+		rnCore->onBrokerConnected(1);
 	}
 }
 
 void CIT::RnCore::onConnect(struct mosquitto *mosq, void *coreRef, int rc)
 {
 	auto *rnCore = static_cast<RnCore *>(coreRef);
+	rnCore->isConnecting = false;
+	rnCore->isConnected = true;
+	LOG_F(INFO, "Connected to MQTT broker %s", rnCore->brokerHostname.c_str());
+
 	char *const const topics[] =
 		{TOPIC_SPATEM, TOPIC_OBU_INFO, TOPIC_MAPEM, TOPIC_DENM, TOPIC_CAM, TOPIC_CPM, TOPIC_IVIM, TOPIC_DENM_LOOPBACK, TOPIC_CPM_LOOPBACK};
-	int rcSub = mosquitto_subscribe_multiple(rnCore->client, nullptr, 9, topics, 0, 0, NULL);
-	if (MOSQ_ERR_SUCCESS != rcSub)
+	mosquitto_subscribe_multiple(rnCore->client, nullptr, 9, topics, 0, 0, NULL);
+
+	if (rnCore->onBrokerConnected != nullptr)
 	{
-		LOG_F(ERROR, "Error subscribing to topic 'v2x/rx/#', error code %i", rcSub);
-		mosquitto_loop_stop(rnCore->client, true);
-		mosquitto_disconnect(rnCore->client);
+		rnCore->onBrokerConnected(0);
 	}
 }
 

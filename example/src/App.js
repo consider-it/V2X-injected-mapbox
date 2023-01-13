@@ -1,5 +1,5 @@
 import React from 'react';
-import MapboxGL from '@react-native-mapbox-gl/maps';
+import MapboxGL from '@consider-it/injected-maps';
 import {StyleSheet, Text, View, LogBox, SafeAreaView} from 'react-native';
 import {createStackNavigator, TransitionPresets} from 'react-navigation-stack';
 import {createAppContainer} from 'react-navigation';
@@ -61,12 +61,17 @@ class App extends React.Component {
   async componentDidMount() {
     if (IS_ANDROID) {
       const isGranted = await MapboxGL.requestAndroidLocationPermissions();
-      MapboxGL.initializeV2xCore('mqtt.sysinnov.consider-it.de');
       this.setState({
         isAndroidPermissionGranted: isGranted,
         isFetchingAndroidPermission: false,
       });
     }
+    MapboxGL.initializeV2xCore("172.25.0.5", 1883);
+    let i = 0;
+    setInterval(() => {
+      MapboxGL.switchV2xCoreBroker(["test.mosquitto.org", "172.25.0.5", "mqtt.sysinnov.consider-it.de"][i % 3], 1883)
+      i++
+    }, 5000)
   }
 
   render() {

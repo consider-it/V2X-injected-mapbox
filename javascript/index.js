@@ -43,6 +43,24 @@ const MapboxGL = {...NativeModules.MGLModule};
 
 const eventEmitter = new NativeEventEmitter(NativeModules.MGLModule);
 
+MapboxGL.registerDenmCallback = (callback) => {
+  eventEmitter.addListener('DENM', ({ geojson }) => {
+    callback(geojson);
+  });
+}
+
+MapboxGL.registerCpmCallback = (callback) => {
+  eventEmitter.addListener('CPM', () => {
+    callback();
+  });
+}
+
+MapboxGL.registerMqttConnectionCallback = (callback) => {
+  eventEmitter.addListener('MQTT_CONNECT', ({connectionState}) => {
+    callback(connectionState);
+  });
+}
+
 MapboxGL.registerGeojsonCallback = (callback) => {
   eventEmitter.addListener('GEOJSON', ({ type, geoJSON }) => {
     callback(type, geoJSON);
@@ -73,6 +91,26 @@ MapboxGL.unregisterGlosaCallback = () => {
   eventEmitter.removeAllListeners('GLOSA');
 }
 
+MapboxGL.unregisterDenmCallback = () => {
+  eventEmitter.removeAllListeners('DENM');
+}
+
+MapboxGL.unregisterCpmCallback = () => {
+  eventEmitter.removeAllListeners('CPM');
+}
+
+MapboxGL.unregisterMqttConnectionCallback = () => {
+  eventEmitter.removeAllListeners('MQTT_CONNECT');
+}
+
+MapboxGL.unregisterAllCallbacks = () => {
+  eventEmitter.removeAllListeners('MQTT_CONNECT');
+  eventEmitter.removeAllListeners('DENM');
+  eventEmitter.removeAllListeners('CPM');
+  eventEmitter.removeAllListeners('OBU_INFO');
+  eventEmitter.removeAllListeners('GEOJSON');
+  eventEmitter.removeAllListeners('GLOSA');
+}
 // static methods
 MapboxGL.requestAndroidLocationPermissions = async function () {
   if (isAndroid()) {

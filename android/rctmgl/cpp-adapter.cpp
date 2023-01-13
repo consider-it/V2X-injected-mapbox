@@ -17,6 +17,7 @@
 static std::shared_ptr<CIT::RnCore> core = nullptr;
 JavaVM *jvm;
 jmethodID obuInfoCb;
+jmethodID connectedCb;
 jmethodID geoJsonCb;
 jobject rnCoreModuleInstance;
 
@@ -68,6 +69,28 @@ void sendGeoJSONToJava(int fcType, std::string &geojson)
     }
 }
 
+void sendConnectedToJava(int state)
+{
+    JNIEnv *mosquittoEnv;
+    int getEnvStat = jvm->GetEnv((void **)&mosquittoEnv, JNI_VERSION_1_6);
+    if (getEnvStat == JNI_EDETACHED)
+    {
+        __android_log_print(ANDROID_LOG_DEBUG, "RnCore", "GetEnv: not attached. Attempting to attach...");
+        if (jvm->AttachCurrentThread(&mosquittoEnv, NULL) != 0)
+        {
+            __android_log_print(ANDROID_LOG_ERROR, "RnCore", "Failed to attach");
+        }
+    }
+    else if (getEnvStat == JNI_OK)
+    {
+        mosquittoEnv->CallVoidMethod(rnCoreModuleInstance, connectedCb, state);
+    }
+    else if (getEnvStat == JNI_EVERSION)
+    {
+        __android_log_print(ANDROID_LOG_ERROR, "RnCore", "GetEnv: version not supported");
+    }
+}
+
 extern "C" JNIEXPORT void JNICALL
 Java_com_mapbox_rctmgl_modules_RCTMGLModule_nativeInit(JNIEnv *env, jobject callingObject, jstring mqttHost, jint mqttPort)
 {
@@ -77,6 +100,7 @@ Java_com_mapbox_rctmgl_modules_RCTMGLModule_nativeInit(JNIEnv *env, jobject call
     rnCoreModuleInstance = env->NewGlobalRef(callingObject);
     jclass rnCoreModule = env->GetObjectClass(rnCoreModuleInstance);
     obuInfoCb = env->GetMethodID(rnCoreModule, "javaObuInfoCallback", "(DDDDD)V");
+    connectedCb = env->GetMethodID(rnCoreModule, "javaConnectedCallback", "(I)V");
     geoJsonCb = env->GetMethodID(rnCoreModule, "javaGeoJSONCallback", "(I[B)V");
     core->registerObuInfoCallback(&sendObuInfoToJava);
     core->registerGeojsonCallback(Caches::FeatureCollectionType::FC_GREEN_LANES, [](std::string geojson)
@@ -103,6 +127,7 @@ Java_com_mapbox_rctmgl_modules_RCTMGLModule_nativeInit(JNIEnv *env, jobject call
                                   { sendGeoJSONToJava(Caches::FeatureCollectionType::FC_IVIM, geojson); });
     core->registerGeojsonCallback(Caches::FeatureCollectionType::FC_MISC, [](std::string geojson)
                                   { sendGeoJSONToJava(Caches::FeatureCollectionType::FC_MISC, geojson); });
+    core->registerOnConnectCallback(&sendConnectedToJava);
     core->connect();
 }
 
@@ -141,6 +166,7 @@ Java_com_mapbox_rctmgl_modules_RCTMGLModule_nativeGlosa(JNIEnv *env, jobject thi
 extern "C" JNIEXPORT void JNICALL
 Java_com_mapbox_rctmgl_modules_RCTMGLModule_nativeClose(JNIEnv *env, jclass clazz)
 {
+    core->registerOnConnectCallback(nullptr);
     core->close();
     env->DeleteGlobalRef(rnCoreModuleInstance);
 }

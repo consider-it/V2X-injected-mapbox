@@ -106,6 +106,7 @@ ios/.framework_version
 ios/Pods/
 ios/RCTMGL.xcodeproj/xcshareddata/
 android/build/
+android/rctmgl/build/
 android/.gradle/
 android/.idea/
 android/android.iml
@@ -128,3 +129,5 @@ react-native-mapbox-gl-maps.tgz
 jniLibs/
 .cxx/
 *.tgz
+
+*.npmrc

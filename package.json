@@ -1,10 +1,7 @@
 {
-  "name": "@react-native-mapbox-gl/maps",
+  "name": "@consider-it/injected-maps",
   "description": "A Mapbox GL react native module for creating custom maps",
   "version": "8.6.0-beta.0",
-  "publishConfig": {
-    "access": "public"
-  },
   "author": "React Native Mapbox Team",
   "main": "./javascript/index.js",
   "keywords": [
@@ -15,9 +12,8 @@
     "react-native"
   ],
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/rnmapbox/maps"
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   },
   "scripts": {
     "fetch:style:spec": ". ./scripts/download-style-spec.sh",

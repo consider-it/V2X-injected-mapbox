@@ -21,7 +21,8 @@ cp obj/armeabi-v7a/*.so ../../../../../src/main/jniLibs/armeabi-v7a/
 cp obj/x86/*.so ../../../../../src/main/jniLibs/x86/
 cp obj/x86_64/*.so ../../../../../src/main/jniLibs/x86_64/
 
-cd ../../../../../..
-sed -r -i 's/path[ , \n, \t]*\"[.,\/,a-z, A-Z, 0-9]*CMakeLists\.txt\"/\/*&*\//g' ./build.gradle
+cd ../../../../..
+pwd
+sed -r -i 's/^[ , \n, \t]*path[ , \n, \t]*\"[.,\/,a-z, A-Z, 0-9]*CMakeLists\.txt\"/\/*&*\//g' ./build.gradle
 
 printf "\nprepared sources for packing\n"

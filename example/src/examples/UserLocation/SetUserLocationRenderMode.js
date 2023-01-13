@@ -1,5 +1,5 @@
 import React from 'react';
-import MapboxGL from '@react-native-mapbox-gl/maps';
+import MapboxGL from '@consider-it/injected-maps';
 import {Button, View} from 'react-native';
 import {ButtonGroup} from 'react-native-elements';
 import PropTypes from 'prop-types';
