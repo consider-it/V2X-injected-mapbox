@@ -382,10 +382,10 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
     public static Consumer<Pair<Integer, String>> registeredGeojsonCallback;
     public static Consumer<ObuInfo> registeredObuCallback;
     private ObuInfo lastObuInfo;
-    private boolean fetchingGlosa = false;
     private ScheduledExecutorService scheduler;
     private int listenerCount = 0;
     private ScheduledFuture<?> scheduledRetrial;
+    private ScheduledFuture<?> scheduledGlosa;
     private String mqttHost;
     private int mqttPort;
 
@@ -403,9 +403,8 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void addListener(String eventName) {
-        if (eventName.equals("GLOSA") && !this.fetchingGlosa) {
-            this.fetchingGlosa = true;
-            scheduler.scheduleAtFixedRate(this.glosaTask, 0, 1000, TimeUnit.MILLISECONDS);
+        if (eventName.equals("GLOSA") && this.scheduledGlosa == null) {
+            this.scheduledGlosa = scheduler.scheduleAtFixedRate(this.glosaTask, 0, 1000, TimeUnit.MILLISECONDS);
         }
 
         listenerCount += 1;
@@ -448,31 +447,33 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
         this.mqttHost = mqttHost;
         nativeClose();
         nativeInit(mqttHost, mqttPort);
+        if (this.scheduledGlosa != null) {
+            this.scheduledGlosa.cancel(true);
+        }
+        this.scheduledGlosa = scheduler.scheduleAtFixedRate(this.glosaTask, 0, 1000, TimeUnit.MILLISECONDS);
     }
 
-    private final TimerTask glosaTask = new TimerTask() {
-        @Override
-        public void run() {
-            if (RCTMGLModule.this.lastObuInfo != null) {
-                TlSpat[] spats = nativeGlosa(
-                        lastObuInfo.getLon(),
-                        lastObuInfo.getLat(),
-                        lastObuInfo.getHeading(),
-                        lastObuInfo.getTime(),
-                        0);
-                StringBuilder stringBuilder = new StringBuilder(500);
-                stringBuilder.append("[");
-                for (int i = 0; i < spats.length; i++) {
-                    stringBuilder.append(spats[i].toJson());
-                    if (i != (spats.length - 1))
-                        stringBuilder.append(",");
-                }
-                stringBuilder.append("]");
-
-                WritableMap params = Arguments.createMap();
-                params.putString("tlSpatList", stringBuilder.toString());
-                sendEvent("GLOSA", params);
+    private final Runnable glosaTask = () -> {
+        if (this.lastObuInfo != null) {
+            TlSpat[] spats = nativeGlosa(
+                    lastObuInfo.getLon(),
+                    lastObuInfo.getLat(),
+                    lastObuInfo.getHeading(),
+                    lastObuInfo.getTime(),
+                    0);
+            StringBuilder stringBuilder = new StringBuilder(500);
+            stringBuilder.append("[");
+            for (int i = 0; i < spats.length; i++) {
+                stringBuilder.append(spats[i].toJson());
+                if (i != (spats.length - 1))
+                    stringBuilder.append(",");
             }
+            stringBuilder.append("]");
+
+            WritableMap params = Arguments.createMap();
+            params.putString("tlSpatList", stringBuilder.toString());
+            sendEvent("GLOSA", params);
+
         }
     };
 
