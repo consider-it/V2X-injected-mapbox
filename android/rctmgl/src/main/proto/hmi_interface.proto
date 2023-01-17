@@ -1,0 +1,118 @@
+/*
+ * HMI TX Protobuf Protocol Specification v1.2.2
+ * Copyright: consider it GmbH, 2023
+ */
+
+syntax = "proto2";
+
+package hmi_interface;
+
+//
+// COMMON DATA TYPES
+//
+
+message LngLat {
+  required sint32 longitude   = 1; // EPSG:4326 coordinates in tenths of microdegrees
+  required sint32 latitude    = 2; // EPSG:4326 coordinates in tenths of microdegrees
+}
+
+enum StationType {
+  UNKNOWN_STATION             = 0;
+  PEDESTRIAN                  = 1;
+  CYCLIST                     = 2;
+  MOPED                       = 3;
+  MOTORCYCLE                  = 4;
+  PASSENGERCAR                = 5;
+  BUS                         = 6;
+  LIGHTTRUCK                  = 7;
+  HEAVYTRUCK                  = 8;
+  TRAILER                     = 9;
+  SPECIALVEHICLES             = 10;
+  TRAM                        = 11;
+  ROADSIDEUNIT                = 15;
+}
+
+enum VehicleRole {
+  DEFAULT_VEHICLEROLE         = 0;
+  PUBLICTRANSPORT             = 1;
+  SPECIALTRANSPORT            = 2;
+  DANGEROUSGOODS              = 3;
+  ROADWORK                    = 4;
+  RESCUE                      = 5;
+  EMERGENCY                   = 6;
+  SAFETYCAR                   = 7;
+  AGRICULTURE                 = 8;
+  COMMERCIAL                  = 9;
+  MILITARY                    = 10;
+  ROADOPERATOR                = 11;
+  TAXI                        = 12;
+  RESERVED1                   = 13;
+  RESERVED2                   = 14;
+  RESERVED3                   = 15;
+}
+
+//
+// MESSAGES
+//
+
+// Message to provide green light speed advise (GLOSA)
+message GlosaMessage {
+  // --- GLOSA INTERNAL DATA TYPES ---
+
+  // Describes the possible maneuvers on the lane a signal group pertains to
+  enum LaneDirection {
+    STRAIGHT                  = 0;
+    RIGHT                     = 1;
+    LEFT                      = 2;
+    OMNI                      = 3;
+    STRAIGHT_LEFT             = 4;
+    STRAIGHT_RIGHT            = 5;
+    UNKNOWN_DIRECTION         = 15;
+  }
+
+  // Describes the phase of a signal group
+  enum EventState {
+    DARK                      = 0;
+    RED                       = 1;
+    REDYELLOW                 = 2;
+    GREEN                     = 3;
+    YELLOW                    = 4;
+    ATTENTION                 = 5;
+    UNKNOWN_STATE             = 15;
+  }
+
+  // Describes the state of a single signal group
+  message TlSpat {
+    optional LaneDirection laneDirection  = 1 [default = UNKNOWN_DIRECTION];
+    optional EventState tlPhase           = 2 [default = UNKNOWN_STATE];
+    optional uint32 tlPhaseTime           = 3 [default = 0];
+    optional float advisedSpeed           = 4 [default = 0.0];
+    optional bool tlPhaseTimeAvailable    = 5 [default = true];
+  }
+
+  // --- GLOSA MESSAGE CONTENT ---
+  optional bool isVisible                 = 1 [default = false];
+  repeated TlSpat tlSpatList              = 2;
+  optional uint32 intersectionId          = 3;
+}
+
+// Simplified Cooperative Awareness Message (CAM)
+message SimpleCam {
+  optional uint32 stationId               = 1;
+  optional StationType stationType        = 2 [default = UNKNOWN_STATION];
+  optional LngLat position                = 3;
+  repeated LngLat pathHistory             = 4;
+  optional float mpsSpeed                 = 5; // driving speed, meters per second
+  optional uint32 degreesHeading          = 6; // heading in 0-360 whole degrees from zero north
+  optional VehicleRole vehicleRole        = 7 [default = DEFAULT_VEHICLEROLE];
+}
+
+// Simplified Decentralized Environmental Notification Message (DENM)
+message SimpleDenm {
+  optional uint32 stationId               = 1;
+  optional bool active                    = 2 [default = false];
+  optional LngLat position                = 3;
+  repeated LngLat trace                   = 4;
+  optional uint32 causeCode               = 5;
+  optional uint32 subCauseCode            = 6;
+}

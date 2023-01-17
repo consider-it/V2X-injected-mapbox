@@ -19,6 +19,7 @@ import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.common.MapBuilder;
 import com.facebook.react.module.annotations.ReactModule;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.mapbox.mapboxsdk.maps.TelemetryDefinition;
 import com.mapbox.mapboxsdk.Mapbox;
 // import com.mapbox.mapboxsdk.constants.Style;
@@ -32,6 +33,7 @@ import com.mapbox.rctmgl.location.UserLocationVerticalAlignment;
 import com.mapbox.rctmgl.location.UserTrackingMode;
 import com.mapbox.mapboxsdk.maps.Style;
 
+import hmi_interface.HmiInterface;
 import okhttp3.Dispatcher;
 import okhttp3.OkHttpClient;
 
@@ -407,9 +409,6 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
         } else {
             onBind = this::scanForObu;
         }
-        this.mReactContext
-                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-                .emit("DEVICE_FOUND", null);
     }
 
     @ReactMethod
@@ -444,7 +443,32 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
 
                 @Override
                 public void updateChara(String characteristic, byte[] payload) {
-                    Log.d("InjectedMaps", "updateChara: " + characteristic + " " + payload.length);
+                    try {
+                        switch (characteristic) {
+                            case BleService.BLE_GLOSA_UUID:
+                                HmiInterface.GlosaMessage glosa =
+                                        HmiInterface.GlosaMessage.parseFrom(payload);
+                                Log.d("InjectedMaps", "updateChara: " + glosa.toString());
+                                break;
+                            case BleService.BLE_DENM_UUID:
+                                HmiInterface.SimpleDenm denm =
+                                        HmiInterface.SimpleDenm.parseFrom(payload);
+                                Log.d("InjectedMaps", "updateChara: " + denm.toString());
+                                break;
+                            case BleService.BLE_CAM_UUID:
+                                HmiInterface.SimpleCam cam =
+                                        HmiInterface.SimpleCam.parseFrom(payload);
+                                Log.d("InjectedMaps", "updateChara: " + cam.toString());
+                                break;
+                            case BleService.OBU_POS_UUID:
+                                HmiInterface.SimpleCam obu =
+                                        HmiInterface.SimpleCam.parseFrom(payload);
+                                Log.d("InjectedMaps", "updateChara: " + obu.toString());
+                                break;
+                        }
+                    } catch (InvalidProtocolBufferException e) {
+                        Log.e("InjectedMaps", "updateChara: ", e);
+                    }
                 }
             });
             bleServiceBound = true;

@@ -1,4 +1,5 @@
 apply plugin: 'com.android.library'
+apply plugin: 'com.google.protobuf'
 
 def safeExtGet(prop, fallback) {
     rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
@@ -26,6 +27,18 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+
+    sourceSets {
+        main {
+            proto {
+                "$projectDir/src/main/proto"
+            }
+            java {
+                "$projectDir/src/main/javalite"
+            }
+        }
+    }
+
 }
 
 def customizableDependencies(name, defaultDependencies) {
@@ -42,6 +55,28 @@ def customizableDependencies(name, defaultDependencies) {
     } else {
         defaultDependencies.delegate = defaultDependencies.owner.delegate
         defaultDependencies.call()
+    }
+}
+
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc:3.0.0'
+    }
+    plugins {
+        javalite {
+            artifact = 'com.google.protobuf:protoc-gen-javalite:3.0.0'
+        }
+    }
+
+    generateProtoTasks {
+        all().each { task ->
+            task.builtins {
+                remove java
+            }
+            task.plugins {
+                javalite {}
+            }
+        }
     }
 }
 
@@ -68,6 +103,7 @@ dependencies {
 
     // CIT-specific dependencies
     implementation "com.polidea.rxandroidble3:rxandroidble:1.17.2"
+    implementation 'com.google.protobuf:protobuf-lite:3.0.0'
 
     // Mapbox plugins
     customizableDependencies('rnmbglMapboxPlugins') {

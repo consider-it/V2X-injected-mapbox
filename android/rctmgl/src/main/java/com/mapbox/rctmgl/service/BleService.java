@@ -17,6 +17,7 @@ import com.polidea.rxandroidble3.RxBleClient;
 import com.polidea.rxandroidble3.RxBleConnection;
 import com.polidea.rxandroidble3.RxBleDevice;
 import com.polidea.rxandroidble3.internal.RxBleLog;
+import com.polidea.rxandroidble3.scan.ScanRecord;
 import com.polidea.rxandroidble3.scan.ScanResult;
 import com.polidea.rxandroidble3.scan.ScanSettings;
 
@@ -30,10 +31,10 @@ import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.disposables.Disposable;
 
 public class BleService extends Service {
-    final String BLE_GLOSA_UUID = "9bb78031-77eb-4ed9-b7d2-48ba9bb5304d";
-    final String BLE_CAM_UUID = "9bb78032-77eb-4ed9-b7d2-48ba9bb5304d";
-    final String BLE_DENM_UUID = "9bb78033-77eb-4ed9-b7d2-48ba9bb5304d";
-    final String OBU_POS_UUID = "9bb78030-77eb-4ed9-b7d2-48ba9bb5304d";
+    public static final String BLE_GLOSA_UUID = "9bb78031-77eb-4ed9-b7d2-48ba9bb5304d";
+    public static final String BLE_CAM_UUID = "9bb78032-77eb-4ed9-b7d2-48ba9bb5304d";
+    public static final String BLE_DENM_UUID = "9bb78033-77eb-4ed9-b7d2-48ba9bb5304d";
+    public static final String OBU_POS_UUID = "9bb78030-77eb-4ed9-b7d2-48ba9bb5304d";
     private final String[] BLE_CHARA_UUIDS = {BLE_CAM_UUID, BLE_DENM_UUID, BLE_GLOSA_UUID, OBU_POS_UUID};
 
     private final IBinder binder = new BleBinder();
@@ -60,9 +61,13 @@ public class BleService extends Service {
                                 .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
                                 .build()
                 )
-//                .filter(scanResult ->
-//                        scanResult.getScanRecord().getServiceUuids().contains(ParcelUuid.fromString("9bb78000-77eb-4ed9-b7d2-48ba9bb5304d"))
-//                )
+                .filter(scanResult -> {
+                    ScanRecord record = scanResult.getScanRecord();
+                    if (record == null) return false;
+                    List<ParcelUuid> serviceUuids = record.getServiceUuids();
+                    if (serviceUuids == null) return false;
+                    return serviceUuids.contains(ParcelUuid.fromString("9bb78000-77eb-4ed9-b7d2-48ba9bb5304d"));
+                })
                 .subscribe(scanResult -> {
                             if (listener != null) {
                                 WritableMap params = Arguments.createMap();
@@ -81,6 +86,9 @@ public class BleService extends Service {
         RxBleDevice device = rxBleClient.getBleDevice(deviceAddress);
         connectionDisposable.add(device.establishConnection(false).subscribe(
                 rxBleConnection -> {
+                    if (scanDisposable != null && scanDisposable.isDisposed()) {
+                        scanDisposable.dispose();
+                    }
                     connectionDisposable.add(
                             device.observeConnectionStateChanges()
                                     .filter(state ->
