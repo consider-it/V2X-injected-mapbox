@@ -1,5 +1,5 @@
 import React from 'react';
-import MapboxGL from '@react-native-mapbox-gl/maps';
+import MapboxGL, { BleMessageSource } from '@react-native-mapbox-gl/maps';
 import {StyleSheet, Text, View, LogBox, SafeAreaView} from 'react-native';
 import {createStackNavigator, TransitionPresets} from 'react-navigation-stack';
 import {createAppContainer} from 'react-navigation';
@@ -66,6 +66,9 @@ class App extends React.Component {
         isFetchingAndroidPermission: false,
       });
     }
+    const bleMessageSource = new BleMessageSource()
+    bleMessageSource.registerOnDeviceFound((name, addr, rssi) => console.log(name, addr, rssi))
+    bleMessageSource.scanForObu()
   }
 
   render() {

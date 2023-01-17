@@ -16,6 +16,7 @@ import com.facebook.react.bridge.WritableMap;
 import com.polidea.rxandroidble3.RxBleClient;
 import com.polidea.rxandroidble3.RxBleConnection;
 import com.polidea.rxandroidble3.RxBleDevice;
+import com.polidea.rxandroidble3.internal.RxBleLog;
 import com.polidea.rxandroidble3.scan.ScanResult;
 import com.polidea.rxandroidble3.scan.ScanSettings;
 
@@ -46,31 +47,34 @@ public class BleService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        RxBleClient.setLogLevel(RxBleLog.VERBOSE);
 
         rxBleClient = RxBleClient.create(getApplicationContext());
     }
 
     public void scan() {
-        if (!scanDisposable.isDisposed()) scanDisposable.dispose();
+        if (scanDisposable != null && !scanDisposable.isDisposed()) scanDisposable.dispose();
         scanDisposable = rxBleClient.scanBleDevices(
-                new ScanSettings.Builder()
-                        .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
-                        .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
-                        .build()
-        ).filter(scanResult ->
-                scanResult.getScanRecord().getServiceUuids().contains(ParcelUuid.fromString("9bb78000-77eb-4ed9-b7d2-48ba9bb5304d"))
-        ).subscribe(scanResult -> {
-                    if (listener != null) {
-                        WritableMap params = Arguments.createMap();
-                        params.putString("deviceName", scanResult.getBleDevice().getName());
-                        params.putString("deviceAddress", scanResult.getBleDevice().getMacAddress());
-                        params.putInt("rssi", scanResult.getRssi());
-                        listener.sendEvent("DEVICE_FOUND", params);
-                    }
-                },
-                throwable ->
-                        Log.d("InjectedMaps", "Error during scanning: " + throwable.getMessage())
-        );
+                        new ScanSettings.Builder()
+                                .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
+                                .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
+                                .build()
+                )
+//                .filter(scanResult ->
+//                        scanResult.getScanRecord().getServiceUuids().contains(ParcelUuid.fromString("9bb78000-77eb-4ed9-b7d2-48ba9bb5304d"))
+//                )
+                .subscribe(scanResult -> {
+                            if (listener != null) {
+                                WritableMap params = Arguments.createMap();
+                                params.putString("deviceName", scanResult.getBleDevice().getName());
+                                params.putString("deviceAddress", scanResult.getBleDevice().getMacAddress());
+                                params.putInt("rssi", scanResult.getRssi());
+                                listener.sendEvent("DEVICE_FOUND", params);
+                            }
+                        },
+                        throwable ->
+                                Log.d("InjectedMaps", "Error during scanning: " + throwable.getMessage())
+                );
     }
 
     public void connect(String deviceAddress) {
@@ -111,8 +115,7 @@ public class BleService extends Service {
                                                     }
                                                 },
                                                 throwable ->
-                                                    Log.d("InjectedMaps", "Error during scanning: " + throwable.getMessage())
-
+                                                        Log.d("InjectedMaps", "Error during scanning: " + throwable.getMessage())
                                         ));
                     }
                 },
@@ -147,6 +150,7 @@ public class BleService extends Service {
 
     public interface BleServiceListener {
         void sendEvent(String eventName, @Nullable WritableMap params);
+
         void updateChara(String characteristic, byte[] payload);
     }
 }

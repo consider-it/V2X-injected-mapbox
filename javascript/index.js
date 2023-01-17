@@ -1,6 +1,7 @@
 import {
   Animated as RNAnimated,
   NativeModules,
+  NativeEventEmitter,
   PermissionsAndroid,
 } from 'react-native';
 
@@ -39,6 +40,41 @@ import Style from './components/Style';
 import Logger from './utils/Logger';
 
 const MapboxGL = {...NativeModules.MGLModule};
+
+export class BleMessageSource {
+  _eventEmitter;
+
+  constructor() {
+    this._eventEmitter = new NativeEventEmitter(NativeModules.MGLModule);
+  }
+
+  scanForObu = MapboxGL.scanForObu;
+  connectToObu = MapboxGL.connectToObu;
+
+  registerOnDeviceFound = (callback) => {
+    this._eventEmitter.addListener("DEVICE_FOUND", (event) => {
+      callback(event.deviceName, event.deviceAddress, event.rssi);
+   });
+  }
+  
+  unregisterOnDeviceFound = () => this._eventEmitter.removeAllListeners("DEVICE_FOUND");
+  
+ registerOnDeviceDisconnected = (callback) => {
+    this._eventEmitter.addListener('DEVICE_DISCONNECTED', ({deviceAddress, deviceName}) => {
+      callback(deviceName, deviceAddress);
+   });
+  }
+  
+  unregisterOnDeviceDisconnected = () => this._eventEmitter.removeAllListeners("DEVICE_DISCONNECTED");
+  
+ registerOnDeviceSubscribed = (callback) => {
+    this._eventEmitter.addListener('DEVICE_SUBSCRIBED', ({deviceAddress, deviceName, characteristic}) => {
+      callback(deviceName, deviceAddress, characteristic);
+   });
+  }
+  
+  unregisterOnDeviceSubscribed = () => this._eventEmitter.removeAllListeners("DEVICE_SUBSCRIBED");
+}
 
 // static methods
 MapboxGL.requestAndroidLocationPermissions = async function () {

@@ -1,5 +1,7 @@
 package com.mapbox.rctmgl.modules;
 
+import android.Manifest;
+import android.bluetooth.BluetoothAdapter;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -10,6 +12,7 @@ import android.util.Log;
 
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.WritableMap;
@@ -51,7 +54,7 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
     private static boolean customHeaderInterceptorAdded = false;
 
     private Handler mUiThreadHandler;
-    private ReactApplicationContext mReactContext;
+    private final ReactApplicationContext mReactContext;
 
     public RCTMGLModule(ReactApplicationContext reactApplicationContext) {
         super(reactApplicationContext);
@@ -373,9 +376,10 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
 // =================================================================================================
 // =================================================================================================
 // =================================================================================================
-    BleService bleService;
-    boolean bleServiceBound = false;
-    int listenerCount = 0;
+    private BleService bleService;
+    private boolean bleServiceBound = false;
+    private int listenerCount = 0;
+    private Runnable onBind;
 
     @ReactMethod
     public void addListener(String eventName) {
@@ -401,8 +405,11 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
         if (bleServiceBound && bleService != null) {
             bleService.scan();
         } else {
-            Log.d("InjectedMaps", "scanForObu: BLE Service is not bound!");
+            onBind = this::scanForObu;
         }
+        this.mReactContext
+                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                .emit("DEVICE_FOUND", null);
     }
 
     @ReactMethod
@@ -410,8 +417,16 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
         if (bleServiceBound && bleService != null) {
             bleService.connect(deviceAddress);
         } else {
-            Log.d("InjectedMaps", "connectToObu: BLE Service is not bound!");
+            onBind = () -> connectToObu(deviceAddress);
         }
+    }
+
+    private void sendEvent(
+            String eventName,
+            @Nullable WritableMap params) {
+        this.mReactContext
+                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                .emit(eventName, params);
     }
 
     private final ServiceConnection bleConnection = new ServiceConnection() {
@@ -423,9 +438,8 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
             bleService = binder.getService();
             binder.setListener(new BleService.BleServiceListener() {
                 @Override
-                public void sendEvent(String eventName, @androidx.annotation.Nullable WritableMap params) {
-                    mReactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-                            .emit(eventName, params);
+                public void sendEvent(String eventName, @Nullable WritableMap params) {
+                    RCTMGLModule.this.sendEvent(eventName, params);
                 }
 
                 @Override
@@ -434,6 +448,9 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
                 }
             });
             bleServiceBound = true;
+            if (RCTMGLModule.this.onBind != null) {
+                RCTMGLModule.this.onBind.run();
+            }
         }
 
         @Override
