@@ -1,6 +1,11 @@
 package com.mapbox.rctmgl.modules;
 
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Handler;
+import android.os.IBinder;
 import android.util.Log;
 
 import com.facebook.react.bridge.Promise;
@@ -10,6 +15,7 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.common.MapBuilder;
 import com.facebook.react.module.annotations.ReactModule;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.mapbox.mapboxsdk.maps.TelemetryDefinition;
 import com.mapbox.mapboxsdk.Mapbox;
 // import com.mapbox.mapboxsdk.constants.Style;
@@ -27,6 +33,7 @@ import okhttp3.Dispatcher;
 import okhttp3.OkHttpClient;
 
 import com.mapbox.mapboxsdk.module.http.HttpRequestUtil;
+import com.mapbox.rctmgl.service.BleService;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -325,7 +332,7 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void getAccessToken(Promise promise) {
         String token = Mapbox.getAccessToken();
-        if(token == null) {
+        if (token == null) {
             promise.reject("missing_access_token", "No access token has been set");
         } else {
             promise.resolve(token);
@@ -360,4 +367,80 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
         dispatcher.setMaxRequestsPerHost(20);
         return dispatcher;
     }
+
+    // =================================================================================================
+// =================================================================================================
+// =================================================================================================
+// =================================================================================================
+// =================================================================================================
+    BleService bleService;
+    boolean bleServiceBound = false;
+    int listenerCount = 0;
+
+    @ReactMethod
+    public void addListener(String eventName) {
+        if (listenerCount == 0) {
+            Intent intent = new Intent(mReactContext, BleService.class);
+            mReactContext.bindService(intent, bleConnection, Context.BIND_AUTO_CREATE);
+        }
+
+        listenerCount += 1;
+    }
+
+    @ReactMethod
+    public void removeListeners(Integer count) {
+        listenerCount -= count;
+        if (listenerCount == 0) {
+            mReactContext.unbindService(bleConnection);
+            bleServiceBound = false;
+        }
+    }
+
+    @ReactMethod
+    public void scanForObu() {
+        if (bleServiceBound && bleService != null) {
+            bleService.scan();
+        } else {
+            Log.d("InjectedMaps", "scanForObu: BLE Service is not bound!");
+        }
+    }
+
+    @ReactMethod
+    public void connectToObu(String deviceAddress) {
+        if (bleServiceBound && bleService != null) {
+            bleService.connect(deviceAddress);
+        } else {
+            Log.d("InjectedMaps", "connectToObu: BLE Service is not bound!");
+        }
+    }
+
+    private final ServiceConnection bleConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(ComponentName className,
+                                       IBinder service) {
+            BleService.BleBinder binder = (BleService.BleBinder) service;
+            bleService = binder.getService();
+            binder.setListener(new BleService.BleServiceListener() {
+                @Override
+                public void sendEvent(String eventName, @androidx.annotation.Nullable WritableMap params) {
+                    mReactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                            .emit(eventName, params);
+                }
+
+                @Override
+                public void updateChara(String characteristic, byte[] payload) {
+                    Log.d("InjectedMaps", "updateChara: " + characteristic + " " + payload.length);
+                }
+            });
+            bleServiceBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            bleService = null;
+            bleServiceBound = false;
+        }
+    };
 }
+
