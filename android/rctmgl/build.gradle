@@ -66,6 +66,8 @@ dependencies {
     implementation "com.squareup.okhttp3:okhttp:${safeExtGet('okhttpVersion', '4.9.0')}"
     implementation "com.squareup.okhttp3:okhttp-urlconnection:${safeExtGet('okhttpVersion', '4.9.0')}"
 
+    // CIT-specific dependencies
+    implementation "com.polidea.rxandroidble3:rxandroidble:1.17.2"
 
     // Mapbox plugins
     customizableDependencies('rnmbglMapboxPlugins') {
