@@ -21,6 +21,8 @@ import com.facebook.react.common.MapBuilder;
 import com.facebook.react.module.annotations.ReactModule;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.mapbox.geojson.Feature;
+import com.mapbox.geojson.Point;
 import com.mapbox.mapboxsdk.maps.TelemetryDefinition;
 import com.mapbox.mapboxsdk.Mapbox;
 // import com.mapbox.mapboxsdk.constants.Style;
@@ -43,6 +45,7 @@ import com.mapbox.rctmgl.service.BleService;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
@@ -383,6 +386,7 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
     private boolean bleServiceBound = false;
     private int listenerCount = 0;
     private Runnable onBind;
+    public static Consumer<Feature> registeredObuCallback;
 
     @ReactMethod
     public void addListener(String eventName) {
@@ -457,7 +461,6 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
                             case BleService.BLE_GLOSA_UUID:
                                 HmiInterface.GlosaMessage glosa =
                                         HmiInterface.GlosaMessage.parseFrom(payload);
-                                Log.d("InjectedMaps", "updateChara: " + glosa.toString());
                                 break;
                             case BleService.BLE_DENM_UUID: {
                                 HmiInterface.SimpleDenm denm =
@@ -473,17 +476,24 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
                             case BleService.BLE_CAM_UUID:
                                 HmiInterface.SimpleCam cam =
                                         HmiInterface.SimpleCam.parseFrom(payload);
-                                Log.d("InjectedMaps", "updateChara: " + cam.toString());
                                 break;
                             case BleService.OBU_POS_UUID: {
                                 HmiInterface.SimpleCam obu =
                                         HmiInterface.SimpleCam.parseFrom(payload);
                                 WritableMap params = Arguments.createMap();
+                                double lat = obu.getPosition().getLatitude() / 10000000.0;
+                                double lon = obu.getPosition().getLongitude() / 10000000.0;
                                 params.putInt("heading", obu.getDegreesHeading());
                                 params.putInt("vehicleRole", obu.getVehicleRole().getNumber());
-                                params.putDouble("latitude", obu.getPosition().getLatitude());
-                                params.putDouble("longitude", obu.getPosition().getLongitude());
+                                params.putDouble("latitude", lat);
+                                params.putDouble("longitude", lon);
                                 sendEvent("OBU_INFO", params);
+                                Feature feature = Feature.fromGeometry(
+                                        Point.fromLngLat(lon, lat)
+                                );
+                                feature.addNumberProperty("vehicleRole", obu.getVehicleRole().getNumber());
+                                feature.addNumberProperty("heading", obu.getDegreesHeading());
+                                if (registeredObuCallback != null) registeredObuCallback.accept(feature);
                             }; break;
                         }
                     } catch (InvalidProtocolBufferException e) {

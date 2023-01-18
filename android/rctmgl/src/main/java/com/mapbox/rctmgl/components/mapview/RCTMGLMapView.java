@@ -7,20 +7,26 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.location.Location;
 import android.os.Handler;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.UiThread;
 
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.util.Pair;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+
+import com.facebook.react.uimanager.ThemedReactContext;
+import com.mapbox.geojson.Point;
 import com.mapbox.mapboxsdk.log.Logger;
 
 import com.facebook.react.bridge.LifecycleEventListener;
@@ -54,6 +60,7 @@ import com.mapbox.mapboxsdk.plugins.annotation.SymbolManager;
 import com.mapbox.mapboxsdk.style.expressions.Expression;
 import com.mapbox.mapboxsdk.style.layers.FillLayer;
 import com.mapbox.mapboxsdk.style.layers.Layer;
+import com.mapbox.mapboxsdk.style.layers.LineLayer;
 import com.mapbox.mapboxsdk.style.layers.Property;
 import com.mapbox.mapboxsdk.style.layers.SymbolLayer;
 import com.mapbox.mapboxsdk.style.sources.GeoJsonOptions;
@@ -78,6 +85,7 @@ import com.mapbox.rctmgl.events.IEvent;
 import com.mapbox.rctmgl.events.MapChangeEvent;
 import com.mapbox.rctmgl.events.MapClickEvent;
 import com.mapbox.rctmgl.events.constants.EventTypes;
+import com.mapbox.rctmgl.modules.RCTMGLModule;
 import com.mapbox.rctmgl.utils.BitmapUtils;
 import com.mapbox.rctmgl.utils.GeoJSONUtils;
 import com.mapbox.rctmgl.utils.GeoViewport;
@@ -89,6 +97,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Locale;
+
 import org.json.*;
 
 import javax.annotation.Nullable;
@@ -114,11 +123,13 @@ import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textField;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textSize;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.visibility;
 
+import hmi_interface.HmiInterface;
+
 /**
  * Created by nickitaliano on 8/18/17.
  */
 
-@SuppressWarnings({ "MissingPermission" })
+@SuppressWarnings({"MissingPermission"})
 public class RCTMGLMapView extends MapView implements OnMapReadyCallback, MapboxMap.OnMapClickListener,
         MapboxMap.OnMapLongClickListener, MapView.OnCameraIsChangingListener, MapView.OnCameraDidChangeListener,
         MapView.OnDidFailLoadingMapListener, MapView.OnDidFinishLoadingMapListener,
@@ -181,11 +192,12 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
 
     private LocationComponentManager mLocationComponentManager = null;
 
-    private @Nullable Integer mTintColor = null;
+    private @Nullable
+    Integer mTintColor = null;
 
     // V2X CORE
 
-    private Pair<Long, ObuInfo> lastObuUpdate;
+    private Pair<Long, Feature> lastObuUpdate;
     private ValueAnimator obuAnimator;
 
     // END V2X CORE
@@ -261,7 +273,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
             feature = (AbstractMapFeature) childView;
         } else if (childView instanceof RCTMGLNativeUserLocation) {
             feature = (AbstractMapFeature) childView;
-        }  else if (childView instanceof RCTMGLPointAnnotation) {
+        } else if (childView instanceof RCTMGLPointAnnotation) {
             RCTMGLPointAnnotation annotation = (RCTMGLPointAnnotation) childView;
             mPointAnnotations.put(annotation.getID(), annotation);
             feature = (AbstractMapFeature) childView;
@@ -478,7 +490,6 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
             mMap.setStyle(new Style.Builder().fromUri(mStyleURL));
         }
 
-
         reflow();
 
         mMap.getStyle(style -> {
@@ -534,7 +545,8 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
             }
 
             @Override
-            public void onMoveEnd(MoveGestureDetector detector) {}
+            public void onMoveEnd(MoveGestureDetector detector) {
+            }
         });
     }
 
@@ -604,15 +616,15 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
     }
 
     private void setupLocalization(Style style) {
-      mLocalizationPlugin = new LocalizationPlugin(RCTMGLMapView.this, mMap, style);
-      if (mLocalizeLabels) {
-          try {
-              mLocalizationPlugin.matchMapLanguageWithDeviceDefault();
-          } catch (Exception e) {
-              final String localeString = Locale.getDefault().toString();
-              Logger.w(LOG_TAG, String.format("Could not find matching locale for %s", localeString));
-          }
-      }
+        mLocalizationPlugin = new LocalizationPlugin(RCTMGLMapView.this, mMap, style);
+        if (mLocalizeLabels) {
+            try {
+                mLocalizationPlugin.matchMapLanguageWithDeviceDefault();
+            } catch (Exception e) {
+                final String localeString = Locale.getDefault().toString();
+                Logger.w(LOG_TAG, String.format("Could not find matching locale for %s", localeString));
+            }
+        }
     }
 
     @Override
@@ -678,7 +690,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
                         hits.get(source.getID()),
                         point,
                         screenPoint
-                        ));
+                ));
                 return true;
             }
         }
@@ -832,6 +844,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
                     @Override
                     public void onStyleLoaded(@NonNull Style style) {
                         addAllSourcesToMap();
+                        initV2xLayers(style);
                     }
                 });
             }
@@ -904,10 +917,10 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
         }
         float density = getDisplayDensity();
         mLogoMargins = new int[]{
-            position.hasKey("left") ? (int) density * position.getInt("left") : 0,
-            position.hasKey("top") ? (int) density * position.getInt("top") : 0,
-            position.hasKey("right") ? (int) density * position.getInt("right") : 0,
-            position.hasKey("bottom") ? (int) density * position.getInt("bottom") : 0
+                position.hasKey("left") ? (int) density * position.getInt("left") : 0,
+                position.hasKey("top") ? (int) density * position.getInt("top") : 0,
+                position.hasKey("right") ? (int) density * position.getInt("right") : 0,
+                position.hasKey("bottom") ? (int) density * position.getInt("bottom") : 0
         };
         updateUISettings();
     }
@@ -958,16 +971,16 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
         }
         float density = getDisplayDensity();
         mAttributionMargin = new int[]{
-            position.hasKey("left") ? (int) density * position.getInt("left") : 0,
-            position.hasKey("top") ? (int) density * position.getInt("top") : 0,
-            position.hasKey("right") ? (int) density * position.getInt("right") : 0,
-            position.hasKey("bottom") ? (int) density * position.getInt("bottom") : 0
+                position.hasKey("left") ? (int) density * position.getInt("left") : 0,
+                position.hasKey("top") ? (int) density * position.getInt("top") : 0,
+                position.hasKey("right") ? (int) density * position.getInt("right") : 0,
+                position.hasKey("bottom") ? (int) density * position.getInt("bottom") : 0
         };
         updateUISettings();
     }
 
     public void queryRenderedFeaturesAtPoint(String callbackID, PointF point, Expression filter,
-            List<String> layerIDs) {
+                                             List<String> layerIDs) {
         List<Feature> features = mMap.queryRenderedFeatures(point, filter,
                 layerIDs.toArray(new String[layerIDs.size()]));
 
@@ -1158,10 +1171,10 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
                 )
         ) {
             uiSettings.setAttributionMargins(
-                mAttributionMargin[0],
-                mAttributionMargin[1],
-                mAttributionMargin[2],
-                mAttributionMargin[3]
+                    mAttributionMargin[0],
+                    mAttributionMargin[1],
+                    mAttributionMargin[2],
+                    mAttributionMargin[3]
             );
         }
 
@@ -1178,17 +1191,17 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
         }
 
         if (mLogoMargins != null &&
-            (uiSettings.getLogoMarginLeft() != mLogoMargins[0] ||
-                uiSettings.getLogoMarginTop() != mLogoMargins[1] ||
-                uiSettings.getLogoMarginRight() != mLogoMargins[2] ||
-                uiSettings.getLogoMarginBottom() != mLogoMargins[3]
-            )
+                (uiSettings.getLogoMarginLeft() != mLogoMargins[0] ||
+                        uiSettings.getLogoMarginTop() != mLogoMargins[1] ||
+                        uiSettings.getLogoMarginRight() != mLogoMargins[2] ||
+                        uiSettings.getLogoMarginBottom() != mLogoMargins[3]
+                )
         ) {
             uiSettings.setLogoMargins(
-                mLogoMargins[0],
-                mLogoMargins[1],
-                mLogoMargins[2],
-                mLogoMargins[3]
+                    mLogoMargins[0],
+                    mLogoMargins[1],
+                    mLogoMargins[2],
+                    mLogoMargins[3]
             );
         }
 
@@ -1214,7 +1227,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
         }
 
         if (mCompassViewMargins != null && uiSettings.isCompassEnabled()) {
-            int pixelDensity = (int)getResources().getDisplayMetrics().density;
+            int pixelDensity = (int) getResources().getDisplayMetrics().density;
 
             int x = mCompassViewMargins.getInt("x") * pixelDensity;
             int y = mCompassViewMargins.getInt("y") * pixelDensity;
@@ -1253,7 +1266,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
 
     public double[] getContentInset() {
         if (mInsets == null) {
-            double[] result = {0,0,0,0};
+            double[] result = {0, 0, 0, 0};
 
             return result;
         }
@@ -1321,7 +1334,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
 
     private WritableMap makeRegionPayload(Boolean isAnimated) {
         CameraPosition position = mMap.getCameraPosition();
-        if(position == null || position.target == null) {
+        if (position == null || position.target == null) {
             return new WritableNativeMap();
         }
         LatLng latLng = new LatLng(position.target.getLatitude(), position.target.getLongitude());
@@ -1338,7 +1351,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
         try {
             VisibleRegion visibleRegion = mMap.getProjection().getVisibleRegion();
             properties.putArray("visibleBounds", GeoJSONUtils.fromLatLngBounds(visibleRegion.latLngBounds));
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             Logger.e(LOG_TAG, String.format("An error occurred while attempting to make the region: %s", ex.getMessage()));
         }
 
@@ -1349,7 +1362,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
         IEvent event = new MapChangeEvent(this, EventTypes.REGION_DID_CHANGE,
                 makeRegionPayload(new Boolean(isAnimated)));
 
-                mManager.handleEvent(event);
+        mManager.handleEvent(event);
         mCameraChangeTracker.setReason(CameraChangeTracker.EMPTY);
     }
 
@@ -1504,11 +1517,11 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
     }
 
     /**
-    * Adds the marker image to the map for use as a SymbolLayer icon
-    */
+     * Adds the marker image to the map for use as a SymbolLayer icon
+     */
     private void setUpImage(@NonNull Style loadedStyle) {
         loadedStyle.addImage("MARKER_IMAGE_ID", BitmapFactory.decodeResource(
-            this.getResources(), R.drawable.red_marker)
+                this.getResources(), R.drawable.red_marker)
         );
     }
 
@@ -1521,8 +1534,8 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
     public ViewGroup offscreenAnnotationViewContainer() {
         if (mOffscreenAnnotationViewContainer == null) {
             mOffscreenAnnotationViewContainer = new FrameLayout(getContext());
-            FrameLayout.LayoutParams flParams = new FrameLayout.LayoutParams(0,0);
-            flParams.setMargins(-10000, -10000, -10000,-10000);
+            FrameLayout.LayoutParams flParams = new FrameLayout.LayoutParams(0, 0);
+            flParams.setMargins(-10000, -10000, -10000, -10000);
             mOffscreenAnnotationViewContainer.setLayoutParams(flParams);
             addView(mOffscreenAnnotationViewContainer);
         }
@@ -1546,7 +1559,8 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
         return mLocationComponentManager;
     }
 
-    public @Nullable Integer getTintColor() {
+    public @Nullable
+    Integer getTintColor() {
         return mTintColor;
     }
 
@@ -1558,18 +1572,23 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
         mLocationComponentManager.update(getMapboxMap().getStyle());
     }
 
-    public class ObuInfoEvaluator implements TypeEvaluator<ObuInfo> {
-        public ObuInfo evaluate(float fraction, ObuInfo startValue, ObuInfo endValue) {
-            double deltaLon = endValue.getLon() - startValue.getLon();
-            double deltaLat = endValue.getLat() - startValue.getLat();
-            double deltaHeading = endValue.getHeading() - startValue.getHeading();
-            return new ObuInfo(
-                    startValue.getLon() + deltaLon * (double) fraction,
-                    startValue.getLat() + deltaLat * (double) fraction,
-                    startValue.getHeading() + deltaHeading * (double) fraction,
-                    startValue.getKphSpeed(),
-                    startValue.getTime()
+    public class ObuInfoEvaluator implements TypeEvaluator<Feature> {
+        public Feature evaluate(float fraction, Feature startValue, Feature endValue) {
+            double startLon = ((Point) startValue.geometry()).longitude();
+            double startLat = ((Point) startValue.geometry()).latitude();
+            double startHeading = startValue.getNumberProperty("heading").doubleValue();
+            double deltaLon = ((Point) endValue.geometry()).longitude() - startLon;
+            double deltaLat = ((Point) endValue.geometry()).latitude() - startLat;
+            double deltaHeading = endValue.getNumberProperty("heading").doubleValue() - startHeading;
+            Feature feat = Feature.fromGeometry(
+                    Point.fromLngLat(
+                            startLon + deltaLon * (double) fraction,
+                            startLat + deltaLat * (double) fraction
+                    )
             );
+            feat.addNumberProperty("heading", startHeading + deltaHeading * (double) fraction);
+            feat.addNumberProperty("vehicleRole", startValue.getNumberProperty("vehicleRole"));
+            return feat;
         }
     }
 
@@ -1585,11 +1604,13 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
         GeoJsonSource denmSrc = new GeoJsonSource("denm-src");
         GeoJsonSource camSrc = new GeoJsonSource("cam-src");
         GeoJsonSource obuPosSrc = new GeoJsonSource("obu-pos-src");
+        GeoJsonSource obuPathSrc = new GeoJsonSource("obu-path-src");
 
         style.addSource(refPointSrc);
         style.addSource(denmSrc);
         style.addSource(camSrc);
         style.addSource(obuPosSrc);
+        style.addSource(obuPathSrc);
 
         RCTMGLModule.registeredObuCallback = update -> {
             ((ThemedReactContext) mContext).getCurrentActivity().runOnUiThread(() -> {
@@ -1597,25 +1618,28 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
                     if (obuAnimator != null) obuAnimator.cancel();
                     obuAnimator = ObjectAnimator.ofObject(new ObuInfoEvaluator(), lastObuUpdate.second, update);
                     obuAnimator.setDuration(System.currentTimeMillis() - lastObuUpdate.first);
-                    obuAnimator.addUpdateListener((ValueAnimator.AnimatorUpdateListener) valueAnimator -> ((ThemedReactContext) mContext).runOnUiQueueThread(() -> {
-                        obuPosSrc.setGeoJson(((ObuInfo) valueAnimator.getAnimatedValue()).toJson());
+                    obuAnimator.addUpdateListener(valueAnimator -> ((ThemedReactContext) mContext).runOnUiQueueThread(() -> {
+                        obuPosSrc.setGeoJson((Feature) valueAnimator.getAnimatedValue());
                     }));
                     obuAnimator.start();
                     lastObuUpdate = new Pair(System.currentTimeMillis(), update);
                 } else {
                     ((ThemedReactContext) mContext).runOnUiQueueThread(() -> {
-                        obuPosSrc.setGeoJson(update.toJson());
+                        obuPosSrc.setGeoJson(update);
                     });
                     lastObuUpdate = new Pair(System.currentTimeMillis(), update);
                 }
             });
         };
 
-        SymbolLayer refPointLayer = new SymbolLayer("ref-point-layer", "ref-point-src");
-        SymbolLayer denmLayer = new SymbolLayer("denm-layer", "denm-src");
-        LineLayer denmPathLayer = new LineLayer("denm-path-layer", "denm-src");
-        SymbolLayer camLayer = new SymbolLayer("cam-layer", "cam-src");
-        LineLayer camPathLayer = new LineLayer("cam-path-layer", "cam-src");
+//        SymbolLayer refPointLayer = new SymbolLayer("ref-point-layer", "ref-point-src");
+//        SymbolLayer denmLayer = new SymbolLayer("denm-layer", "denm-src");
+//        LineLayer denmPathLayer = new LineLayer("denm-path-layer", "denm-src");
+//        SymbolLayer camLayer = new SymbolLayer("cam-layer", "cam-src");
+//        LineLayer camPathLayer = new LineLayer("cam-path-layer", "cam-src");
+        SymbolLayer obuPosLayer = new SymbolLayer("obu-pos-layer", "obu-pos-src");
+        /*LineLayer obuPathLayer = new LineLayer("obu-path-layer", "obu-path-layer");
+
 
         refPointLayer.setProperties(
                 iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_MAP),
@@ -1703,7 +1727,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
                 iconSize(0.22f),
                 iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
                 iconRotate(get("degreesHeading"))
-        );
+        );*/
         obuPosLayer.setProperties(
                 iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_MAP),
                 iconAllowOverlap(true),
@@ -1714,12 +1738,13 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
                 iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP)
         );
 
-        style.addLayer(refPointLayer);
-        style.addLayer(camPathLayer);
-        style.addLayer(camLayer);
-        style.addLayer(denmPathLayer);
+//        style.addLayer(refPointLayer);
+//        style.addLayer(camPathLayer);
+//        style.addLayer(camLayer);
+//        style.addLayer(denmPathLayer);
+//        style.addLayer(obuPathLayer);
         style.addLayer(obuPosLayer);
-        style.addLayer(denmLayer);
+        //style.addLayer(denmLayer);
     }
 
     private boolean isDarkMode() {
