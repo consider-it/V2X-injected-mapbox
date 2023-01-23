@@ -1632,7 +1632,8 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
 
         RCTMGLModule.registeredObuCallback = update -> {
             ((ThemedReactContext) mContext).getCurrentActivity().runOnUiThread(() -> {
-                if (lastObuUpdate != null) {
+                if (update == null) return;
+                if (lastObuUpdate != null && lastObuUpdate.second != null) {
                     if (obuAnimator != null) obuAnimator.cancel();
                     obuAnimator = ObjectAnimator.ofObject(new ObuInfoEvaluator(), lastObuUpdate.second, update);
                     obuAnimator.setDuration(System.currentTimeMillis() - lastObuUpdate.first);
@@ -1640,13 +1641,12 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
                         obuPosSrc.setGeoJson(((ObuInfo) valueAnimator.getAnimatedValue()).toJson());
                     }));
                     obuAnimator.start();
-                    lastObuUpdate = new Pair(System.currentTimeMillis(), update);
                 } else {
                     ((ThemedReactContext) mContext).runOnUiQueueThread(() -> {
                         obuPosSrc.setGeoJson(update.toJson());
                     });
-                    lastObuUpdate = new Pair(System.currentTimeMillis(), update);
                 }
+                lastObuUpdate = new Pair(System.currentTimeMillis(), update);
             });
         };
 
