@@ -64,6 +64,7 @@ import com.mapbox.mapboxsdk.style.layers.FillLayer;
 import com.mapbox.mapboxsdk.style.layers.Layer;
 import com.mapbox.mapboxsdk.style.layers.LineLayer;
 import com.mapbox.mapboxsdk.style.layers.Property;
+import com.mapbox.mapboxsdk.style.layers.PropertyFactory;
 import com.mapbox.mapboxsdk.style.layers.SymbolLayer;
 import com.mapbox.mapboxsdk.style.sources.GeoJsonOptions;
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource;
@@ -1595,44 +1596,245 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
     }
 
     private void initV2xLayers(Style style) {
-        for (Pair<String, Integer> asset : v2xImageAssets()) {
-            Bitmap icon = com.mapbox.mapboxsdk.utils.BitmapUtils.getBitmapFromDrawable(
-                    mContext.getResources().getDrawable(asset.second)
+            LineLayer matchedLanesGreen = new LineLayer("matched-lanes-green", "matched-intersections").withProperties(
+                    PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+                    PropertyFactory.lineOffset(interpolate(
+                            exponential(1.5f),
+                            zoom(),
+                            stop(literal(5),
+                                    match(get("class"), literal(0f), stop("trunk_2_0", 0.1875),
+                                            stop("primary_2_0", 0.1875),
+                                            stop("primary_3_0", 0.25),
+                                            stop("trunk_2_1", -0.1875), stop("primary_2_1", -0.1875),
+                                            stop("primary_3_2", -0.25))
+                            ),
+                            stop(literal(18),
+                                    match(get("class"), literal(0f), stop("trunk_2_0", 8f),
+                                            stop("primary_2_0", 8f),
+                                            stop("primary_3_0", 16f),
+                                            stop("secondary_2_0", 6.5), stop("tertiary_2_0", 6.5),
+                                            stop("tertiary_3_0", 8.67), stop("secondary_3_0", 8.67),
+                                            stop("primary_link_2_0", 4f), stop("secondary_link_2_0", 4f), stop("tertiary_link_2_0", 4f), stop("residential_2_0", 4f), stop("unclassified_2_0", 4f),
+                                            stop("primary_link_2_1", -4f), stop("secondary_link_2_1", -4f), stop("tertiary_link_2_1", -4f), stop("residential_2_1", -4f), stop("unclassified_2_1", -4f),
+                                            stop("tertiary_3_2", -8.67), stop("secondary_3_2", -8.67),
+                                            stop("secondary_2_1", -6.5), stop("tertiary_2_1", -6.5),
+                                            stop("trunk_2_1", -8f), stop("primary_2_1", -8f),
+                                            stop("primary_3_2", -16f))
+                            ),
+                            stop(literal(22),
+                                    match(get("class"), literal(0f), stop("trunk_2_0", 80f),
+                                            stop("primary_2_0", 80f),
+                                            stop("primary_3_0", 160f),
+                                            stop("secondary_2_0", 65f), stop("tertiary_2_0", 65f),
+                                            stop("tertiary_3_0", 86.7), stop("secondary_3_0", 86.7),
+                                            stop("primary_link_2_0", 40f), stop("secondary_link_2_0", 40f), stop("tertiary_link_2_0", 40f), stop("residential_2_0", 40f), stop("unclassified_2_0", 40f),
+                                            stop("primary_link_2_1", -40f), stop("secondary_link_2_1", -40f), stop("tertiary_link_2_1", -40f), stop("residential_2_1", -40f), stop("unclassified_2_1", -40f),
+                                            stop("tertiary_3_2", -86.7), stop("secondary_3_2", -86.7),
+                                            stop("secondary_2_1", -65f), stop("tertiary_2_1", -65f),
+                                            stop("trunk_2_1", -80f), stop("primary_2_1", -80f),
+                                            stop("primary_3_2", -160f))
+                            )
+                    )),
+                    PropertyFactory.lineWidth(interpolate(
+                                    exponential(1.5f),
+                                    zoom(),
+                                    stop(literal(5),
+                                            match(get("class"), literal(0f),
+                                                    stop("motorway", 0.75), stop("trunk", 0.75), stop("primary", 0.75),
+                                                    stop("trunk_2_0", 0.3525), stop("trunk_2_1", 0.3525), stop("primary_2_0", 0.3525), stop("primary_2_1", 0.3525),
+                                                    stop("primary_3_0", 0.25), stop("primary_3_1", 0.25), stop("primary_3_2", 0.25),
+                                                    stop("secondary", 0.1), stop("tertiary", 0.1)
+                                            )),
+                                    stop(literal(18),
+                                            match(get("class"), literal(10f),
+                                                    stop("motorway", 32f), stop("trunk", 32f), stop("primary", 32f), stop("secondary", 26f), stop("tertiary", 26f), stop("motorway_link", 16f), stop("trunk_link", 16f), stop("primary_link", 16f), stop("secondary_link", 16f), stop("tertiary_link", 16f), stop("street", 16f), stop("residential", 16f), stop("unclassified", 16f), stop("street_limited", 16f), stop("trunk_2_0", 16f), stop("trunk_2_1", 16f), stop("primary_2_0", 16f), stop("primary_2_1", 16f), stop("secondary_2_0", 13f), stop("secondary_2_1", 13f), stop("tertiary_2_0", 13f), stop("tertiary_2_1", 13f), stop("primary_3_0", 10.7), stop("primary_3_1", 10.7), stop("primary_3_2", 10.7), stop("primary_link_2_0", 8f), stop("primary_link_2_1", 8f), stop("secondary_link_2_0", 8f), stop("secondary_link_2_1", 8f), stop("tertiary_link_2_0", 8f), stop("tertiary_link_2_1", 8f), stop("residential_2_0", 8f), stop("residential_2_1", 8f), stop("unclassified_2_0", 8f), stop("unclassified_2_1", 8f), stop("secondary_3_0", 8.67), stop("secondary_3_1", 8.67), stop("secondary_3_2", 8.67), stop("tertiary_3_0", 8.67), stop("tertiary_3_1", 8.67), stop("tertiary_3_2", 8.67)
+                                            )),
+                                    stop(literal(22),
+                                            match(get("class"), literal(0f),
+                                                    stop("motorway", 320f), stop("trunk", 320f), stop("primary", 320f), stop("secondary", 260f), stop("tertiary", 260f), stop("motorway_link", 160f), stop("trunk_link", 160f), stop("primary_link", 160f), stop("secondary_link", 160f), stop("tertiary_link", 160f), stop("street", 160f), stop("residential", 160f), stop("unclassified", 160f), stop("street_limited", 160f), stop("trunk_2_0", 160f), stop("trunk_2_1", 160f), stop("primary_2_0", 160f), stop("primary_2_1", 160f), stop("secondary_2_0", 130f), stop("secondary_2_1", 130f), stop("tertiary_2_0", 130f), stop("tertiary_2_1", 130f), stop("primary_3_0", 107f), stop("primary_3_1", 107f), stop("primary_3_2", 107f), stop("primary_link_2_0", 80f), stop("primary_link_2_1", 80f), stop("secondary_link_2_0", 80f), stop("secondary_link_2_1", 80f), stop("tertiary_link_2_0", 80f), stop("tertiary_link_2_1", 80f), stop("residential_2_0", 80f), stop("residential_2_1", 80f), stop("unclassified_2_0", 80f), stop("unclassified_2_1", 80f), stop("secondary_3_0", 86.7), stop("secondary_3_1", 86.7), stop("secondary_3_2", 86.7), stop("tertiary_3_0", 86.7), stop("tertiary_3_1", 86.7), stop("tertiary_3_2", 86.7)
+                                            ))
+                            )
+                    ),
+                    PropertyFactory.lineGradient(interpolate(
+                            linear(),
+                            lineProgress(),
+                            stop(0,
+                                    rgba(0, 204, 27, 1)),
+                            stop(1,
+                                    rgba(0, 204, 27, 0))
+                    ))
             );
-            style.addImage(asset.first, icon);
+
+            LineLayer matchedLanesRed = new LineLayer("matched-lanes-red", "matched-intersections").withProperties(
+                    PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+                    PropertyFactory.lineOffset(interpolate(
+                            exponential(1.5f),
+                            zoom(),
+                            stop(literal(5),
+                                    match(get("class"), literal(0f), stop("trunk_2_0", 0.1875),
+                                            stop("primary_2_0", 0.1875),
+                                            stop("primary_3_0", 0.25),
+                                            stop("trunk_2_1", -0.1875), stop("primary_2_1", -0.1875),
+                                            stop("primary_3_2", -0.25))
+                            ),
+                            stop(literal(18),
+                                    match(get("class"), literal(0f), stop("trunk_2_0", 8f),
+                                            stop("primary_2_0", 8f),
+                                            stop("primary_3_0", 16f),
+                                            stop("secondary_2_0", 6.5), stop("tertiary_2_0", 6.5),
+                                            stop("tertiary_3_0", 8.67), stop("secondary_3_0", 8.67),
+                                            stop("primary_link_2_0", 4f), stop("secondary_link_2_0", 4f), stop("tertiary_link_2_0", 4f), stop("residential_2_0", 4f), stop("unclassified_2_0", 4f),
+                                            stop("primary_link_2_1", -4f), stop("secondary_link_2_1", -4f), stop("tertiary_link_2_1", -4f), stop("residential_2_1", -4f), stop("unclassified_2_1", -4f),
+                                            stop("tertiary_3_2", -8.67), stop("secondary_3_2", -8.67),
+                                            stop("secondary_2_1", -6.5), stop("tertiary_2_1", -6.5),
+                                            stop("trunk_2_1", -8f), stop("primary_2_1", -8f),
+                                            stop("primary_3_2", -16f))
+                            ),
+                            stop(literal(22),
+                                    match(get("class"), literal(0f), stop("trunk_2_0", 80f),
+                                            stop("primary_2_0", 80f),
+                                            stop("primary_3_0", 160f),
+                                            stop("secondary_2_0", 65f), stop("tertiary_2_0", 65f),
+                                            stop("tertiary_3_0", 86.7), stop("secondary_3_0", 86.7),
+                                            stop("primary_link_2_0", 40f), stop("secondary_link_2_0", 40f), stop("tertiary_link_2_0", 40f), stop("residential_2_0", 40f), stop("unclassified_2_0", 40f),
+                                            stop("primary_link_2_1", -40f), stop("secondary_link_2_1", -40f), stop("tertiary_link_2_1", -40f), stop("residential_2_1", -40f), stop("unclassified_2_1", -40f),
+                                            stop("tertiary_3_2", -86.7), stop("secondary_3_2", -86.7),
+                                            stop("secondary_2_1", -65f), stop("tertiary_2_1", -65f),
+                                            stop("trunk_2_1", -80f), stop("primary_2_1", -80f),
+                                            stop("primary_3_2", -160f))
+                            )
+                    )),
+                    PropertyFactory.lineWidth(interpolate(
+                                    exponential(1.5f),
+                                    zoom(),
+                                    stop(literal(5),
+                                            match(get("class"), literal(0f),
+                                                    stop("motorway", 0.75), stop("trunk", 0.75), stop("primary", 0.75),
+                                                    stop("trunk_2_0", 0.3525), stop("trunk_2_1", 0.3525), stop("primary_2_0", 0.3525), stop("primary_2_1", 0.3525),
+                                                    stop("primary_3_0", 0.25), stop("primary_3_1", 0.25), stop("primary_3_2", 0.25),
+                                                    stop("secondary", 0.1), stop("tertiary", 0.1)
+                                            )),
+                                    stop(literal(18),
+                                            match(get("class"), literal(10f),
+                                                    stop("motorway", 32f), stop("trunk", 32f), stop("primary", 32f), stop("secondary", 26f), stop("tertiary", 26f), stop("motorway_link", 16f), stop("trunk_link", 16f), stop("primary_link", 16f), stop("secondary_link", 16f), stop("tertiary_link", 16f), stop("street", 16f), stop("residential", 16f), stop("unclassified", 16f), stop("street_limited", 16f), stop("trunk_2_0", 16f), stop("trunk_2_1", 16f), stop("primary_2_0", 16f), stop("primary_2_1", 16f), stop("secondary_2_0", 13f), stop("secondary_2_1", 13f), stop("tertiary_2_0", 13f), stop("tertiary_2_1", 13f), stop("primary_3_0", 10.7), stop("primary_3_1", 10.7), stop("primary_3_2", 10.7), stop("primary_link_2_0", 8f), stop("primary_link_2_1", 8f), stop("secondary_link_2_0", 8f), stop("secondary_link_2_1", 8f), stop("tertiary_link_2_0", 8f), stop("tertiary_link_2_1", 8f), stop("residential_2_0", 8f), stop("residential_2_1", 8f), stop("unclassified_2_0", 8f), stop("unclassified_2_1", 8f), stop("secondary_3_0", 8.67), stop("secondary_3_1", 8.67), stop("secondary_3_2", 8.67), stop("tertiary_3_0", 8.67), stop("tertiary_3_1", 8.67), stop("tertiary_3_2", 8.67)
+                                            )),
+                                    stop(literal(22),
+                                            match(get("class"), literal(0f),
+                                                    stop("motorway", 320f), stop("trunk", 320f), stop("primary", 320f), stop("secondary", 260f), stop("tertiary", 260f), stop("motorway_link", 160f), stop("trunk_link", 160f), stop("primary_link", 160f), stop("secondary_link", 160f), stop("tertiary_link", 160f), stop("street", 160f), stop("residential", 160f), stop("unclassified", 160f), stop("street_limited", 160f), stop("trunk_2_0", 160f), stop("trunk_2_1", 160f), stop("primary_2_0", 160f), stop("primary_2_1", 160f), stop("secondary_2_0", 130f), stop("secondary_2_1", 130f), stop("tertiary_2_0", 130f), stop("tertiary_2_1", 130f), stop("primary_3_0", 107f), stop("primary_3_1", 107f), stop("primary_3_2", 107f), stop("primary_link_2_0", 80f), stop("primary_link_2_1", 80f), stop("secondary_link_2_0", 80f), stop("secondary_link_2_1", 80f), stop("tertiary_link_2_0", 80f), stop("tertiary_link_2_1", 80f), stop("residential_2_0", 80f), stop("residential_2_1", 80f), stop("unclassified_2_0", 80f), stop("unclassified_2_1", 80f), stop("secondary_3_0", 86.7), stop("secondary_3_1", 86.7), stop("secondary_3_2", 86.7), stop("tertiary_3_0", 86.7), stop("tertiary_3_1", 86.7), stop("tertiary_3_2", 86.7)
+                                            ))
+
+                            )
+                    ),
+                    PropertyFactory.lineGradient(interpolate(
+                            linear(),
+                            lineProgress(),
+                            stop(0,
+                                    rgba(255, 77, 77, 1)),
+                            stop(1,
+                                    rgba(255, 77, 77, 0))
+                    ))
+            );
+
+            LineLayer matchedLanesYellow = new LineLayer("matched-lanes-yellow", "matched-intersections").withProperties(
+                    PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+                    PropertyFactory.lineOffset(interpolate(
+                            exponential(1.5f),
+                            zoom(),
+                            stop(literal(5),
+                                    match(get("class"), literal(0f), stop("trunk_2_0", 0.1875),
+                                            stop("primary_2_0", 0.1875),
+                                            stop("primary_3_0", 0.25),
+                                            stop("trunk_2_1", -0.1875), stop("primary_2_1", -0.1875),
+                                            stop("primary_3_2", -0.25))
+                            ),
+                            stop(literal(18),
+                                    match(get("class"), literal(0f), stop("trunk_2_0", 8f),
+                                            stop("primary_2_0", 8f),
+                                            stop("primary_3_0", 16f),
+                                            stop("secondary_2_0", 6.5), stop("tertiary_2_0", 6.5),
+                                            stop("tertiary_3_0", 8.67), stop("secondary_3_0", 8.67),
+                                            stop("primary_link_2_0", 4f), stop("secondary_link_2_0", 4f), stop("tertiary_link_2_0", 4f), stop("residential_2_0", 4f), stop("unclassified_2_0", 4f),
+                                            stop("primary_link_2_1", -4f), stop("secondary_link_2_1", -4f), stop("tertiary_link_2_1", -4f), stop("residential_2_1", -4f), stop("unclassified_2_1", -4f),
+                                            stop("tertiary_3_2", -8.67), stop("secondary_3_2", -8.67),
+                                            stop("secondary_2_1", -6.5), stop("tertiary_2_1", -6.5),
+                                            stop("trunk_2_1", -8f), stop("primary_2_1", -8f),
+                                            stop("primary_3_2", -16f))
+                            ),
+                            stop(literal(22),
+                                    match(get("class"), literal(0f), stop("trunk_2_0", 80f),
+                                            stop("primary_2_0", 80f),
+                                            stop("primary_3_0", 160f),
+                                            stop("secondary_2_0", 65f), stop("tertiary_2_0", 65f),
+                                            stop("tertiary_3_0", 86.7), stop("secondary_3_0", 86.7),
+                                            stop("primary_link_2_0", 40f), stop("secondary_link_2_0", 40f), stop("tertiary_link_2_0", 40f), stop("residential_2_0", 40f), stop("unclassified_2_0", 40f),
+                                            stop("primary_link_2_1", -40f), stop("secondary_link_2_1", -40f), stop("tertiary_link_2_1", -40f), stop("residential_2_1", -40f), stop("unclassified_2_1", -40f),
+                                            stop("tertiary_3_2", -86.7), stop("secondary_3_2", -86.7),
+                                            stop("secondary_2_1", -65f), stop("tertiary_2_1", -65f),
+                                            stop("trunk_2_1", -80f), stop("primary_2_1", -80f),
+                                            stop("primary_3_2", -160f))
+                            )
+                    )),
+                    PropertyFactory.lineWidth(interpolate(
+                                    exponential(1.5f),
+                                    zoom(),
+                                    stop(literal(5),
+                                            match(get("class"), literal(0f),
+                                                    stop("motorway", 0.75), stop("trunk", 0.75), stop("primary", 0.75),
+                                                    stop("trunk_2_0", 0.3525), stop("trunk_2_1", 0.3525), stop("primary_2_0", 0.3525), stop("primary_2_1", 0.3525),
+                                                    stop("primary_3_0", 0.25), stop("primary_3_1", 0.25), stop("primary_3_2", 0.25),
+                                                    stop("secondary", 0.1), stop("tertiary", 0.1)
+                                            )),
+                                    stop(literal(18),
+                                            match(get("class"), literal(10f),
+                                                    stop("motorway", 32f), stop("trunk", 32f), stop("primary", 32f), stop("secondary", 26f), stop("tertiary", 26f), stop("motorway_link", 16f), stop("trunk_link", 16f), stop("primary_link", 16f), stop("secondary_link", 16f), stop("tertiary_link", 16f), stop("street", 16f), stop("residential", 16f), stop("unclassified", 16f), stop("street_limited", 16f), stop("trunk_2_0", 16f), stop("trunk_2_1", 16f), stop("primary_2_0", 16f), stop("primary_2_1", 16f), stop("secondary_2_0", 13f), stop("secondary_2_1", 13f), stop("tertiary_2_0", 13f), stop("tertiary_2_1", 13f), stop("primary_3_0", 10.7), stop("primary_3_1", 10.7), stop("primary_3_2", 10.7), stop("primary_link_2_0", 8f), stop("primary_link_2_1", 8f), stop("secondary_link_2_0", 8f), stop("secondary_link_2_1", 8f), stop("tertiary_link_2_0", 8f), stop("tertiary_link_2_1", 8f), stop("residential_2_0", 8f), stop("residential_2_1", 8f), stop("unclassified_2_0", 8f), stop("unclassified_2_1", 8f), stop("secondary_3_0", 8.67), stop("secondary_3_1", 8.67), stop("secondary_3_2", 8.67), stop("tertiary_3_0", 8.67), stop("tertiary_3_1", 8.67), stop("tertiary_3_2", 8.67)
+                                            )),
+                                    stop(literal(22),
+                                            match(get("class"), literal(0f),
+                                                    stop("motorway", 320f), stop("trunk", 320f), stop("primary", 320f), stop("secondary", 260f), stop("tertiary", 260f), stop("motorway_link", 160f), stop("trunk_link", 160f), stop("primary_link", 160f), stop("secondary_link", 160f), stop("tertiary_link", 160f), stop("street", 160f), stop("residential", 160f), stop("unclassified", 160f), stop("street_limited", 160f), stop("trunk_2_0", 160f), stop("trunk_2_1", 160f), stop("primary_2_0", 160f), stop("primary_2_1", 160f), stop("secondary_2_0", 130f), stop("secondary_2_1", 130f), stop("tertiary_2_0", 130f), stop("tertiary_2_1", 130f), stop("primary_3_0", 107f), stop("primary_3_1", 107f), stop("primary_3_2", 107f), stop("primary_link_2_0", 80f), stop("primary_link_2_1", 80f), stop("secondary_link_2_0", 80f), stop("secondary_link_2_1", 80f), stop("tertiary_link_2_0", 80f), stop("tertiary_link_2_1", 80f), stop("residential_2_0", 80f), stop("residential_2_1", 80f), stop("unclassified_2_0", 80f), stop("unclassified_2_1", 80f), stop("secondary_3_0", 86.7), stop("secondary_3_1", 86.7), stop("secondary_3_2", 86.7), stop("tertiary_3_0", 86.7), stop("tertiary_3_1", 86.7), stop("tertiary_3_2", 86.7)
+                                            ))
+                            )
+                    ),
+                    PropertyFactory.lineGradient(interpolate(
+                            linear(),
+                            lineProgress(),
+                            stop(0,
+                                    rgba(249, 168, 0, 1)),
+                            stop(1,
+                                    rgba(249, 168, 0, 0))
+                    ))
+            );
+
+        matchedLanesGreen.setFilter(in(get("uuid"), literal("")));
+        matchedLanesRed.setFilter(in(get("uuid"), literal("")));
+        matchedLanesYellow.setFilter(in(get("uuid"), literal("")));
+
+        if (style.getSource("matched-intersections") != null) {
+            style.addLayerAbove(matchedLanesGreen, "bridge-simple");
+            style.addLayerAbove(matchedLanesRed, "bridge-simple");
+            style.addLayerAbove(matchedLanesYellow, "bridge-simple");
         }
 
-        GeoJsonSource greenLaneSrc = new GeoJsonSource("green-lane-src", new GeoJsonOptions().withLineMetrics(true));
-        GeoJsonSource redLaneSrc = new GeoJsonSource("red-lane-src", new GeoJsonOptions().withLineMetrics(true));
-        GeoJsonSource yellowLaneSrc = new GeoJsonSource("yellow-lane-src", new GeoJsonOptions().withLineMetrics(true));
-        GeoJsonSource darkLaneSrc = new GeoJsonSource("dark-lane-src", new GeoJsonOptions().withLineMetrics(true));
-        GeoJsonSource refPointSrc = new GeoJsonSource("ref-point-src");
-        GeoJsonSource denmSrc = new GeoJsonSource("denm-src");
-        GeoJsonSource camSrc = new GeoJsonSource("cam-src");
-        GeoJsonSource cpmAreaSrc = new GeoJsonSource("cpm-area-src");
-        GeoJsonSource cpmSensorSrc = new GeoJsonSource("cpm-sensor-src");
-        GeoJsonSource cpmObjectSrc = new GeoJsonSource("cpm-object-src");
-        GeoJsonSource ivimSrc = new GeoJsonSource("ivim-src");
-        GeoJsonSource miscSrc = new GeoJsonSource("misc-src");
-        GeoJsonSource obuPosSrc = new GeoJsonSource("obu-pos-src");
 
-        style.addSource(greenLaneSrc);
-        style.addSource(redLaneSrc);
-        style.addSource(yellowLaneSrc);
-        style.addSource(darkLaneSrc);
-        style.addSource(refPointSrc);
-        style.addSource(denmSrc);
-        style.addSource(camSrc);
-        style.addSource(cpmAreaSrc);
-        style.addSource(cpmSensorSrc);
-        style.addSource(cpmObjectSrc);
-        style.addSource(ivimSrc);
-        style.addSource(miscSrc);
-        style.addSource(obuPosSrc);
+        GeoJsonSource greenLaneSrc = style.getSourceAs("green-lane-src");
+        GeoJsonSource redLaneSrc = style.getSourceAs("red-lane-src");
+        GeoJsonSource yellowLaneSrc = style.getSourceAs("yellow-lane-src");
+        GeoJsonSource darkLaneSrc = style.getSourceAs("dark-lane-src");
+        GeoJsonSource refPointSrc = style.getSourceAs("ref-point-src");
+        GeoJsonSource denmSrc = style.getSourceAs("denm-src");
+        GeoJsonSource camSrc = style.getSourceAs("cam-src");
+        GeoJsonSource cpmAreaSrc = style.getSourceAs("cpm-area-src");
+        GeoJsonSource cpmSensorSrc = style.getSourceAs("cpm-sensor-src");
+        GeoJsonSource cpmObjectSrc = style.getSourceAs("cpm-object-src");
+        GeoJsonSource ivimSrc = style.getSourceAs("ivim-src");
+        GeoJsonSource miscSrc = style.getSourceAs("misc-src");
+        GeoJsonSource obuPosSrc = style.getSourceAs("obu-src");
 
         RCTMGLModule.registeredObuCallback = update -> {
             ((ThemedReactContext) mContext).getCurrentActivity().runOnUiThread(() -> {
-                if (update == null) return;
+                if (update == null || obuPosSrc == null) return;
                 if (lastObuUpdate != null && lastObuUpdate.second != null) {
                     if (obuAnimator != null) obuAnimator.cancel();
                     obuAnimator = ObjectAnimator.ofObject(new ObuInfoEvaluator(), lastObuUpdate.second, update);
@@ -1650,315 +1852,87 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
             });
         };
 
-        RCTMGLModule.registeredGeojsonCallback = update -> {
+        RCTMGLModule.registeredPhaseUuidCallback = update -> {
             ((ThemedReactContext) mContext).runOnUiQueueThread(() -> {
                 switch (update.first) {
-                    case 0:
-                        greenLaneSrc.setGeoJson(update.second);
+                    case 12:
+                        matchedLanesGreen.setFilter(in(get("uuid"), literal(update.second)));
                         break;
-                    case 1:
-                        redLaneSrc.setGeoJson(update.second);
+                    case 13:
+                        matchedLanesRed.setFilter(in(get("uuid"), literal(update.second)));
                         break;
-                    case 2:
-                        yellowLaneSrc.setGeoJson(update.second);
-                        break;
-                    case 3:
-                        darkLaneSrc.setGeoJson(update.second);
-                        break;
-                    case 4:
-                        refPointSrc.setGeoJson(update.second);
-                        break;
-                    case 5:
-                        denmSrc.setGeoJson(update.second);
-                        break;
-                    case 6:
-                        camSrc.setGeoJson(update.second);
-                        break;
-                    case 7:
-                        cpmAreaSrc.setGeoJson(update.second);
-                        break;
-                    case 8:
-                        cpmSensorSrc.setGeoJson(update.second);
-                        break;
-                    case 9:
-                        cpmObjectSrc.setGeoJson(update.second);
-                        break;
-                    case 10:
-                        ivimSrc.setGeoJson(update.second);
-                        break;
-                    case 11:
-                        miscSrc.setGeoJson(update.second);
+                    case 14:
+                        matchedLanesYellow.setFilter(in(get("uuid"), literal(update.second)));
                         break;
                 }
             });
         };
 
-        LineLayer greenLaneLayer = new LineLayer("green-lane-layer", "green-lane-src");
-        LineLayer redLaneLayer = new LineLayer("red-lane-layer", "red-lane-src");
-        LineLayer yellowLaneLayer = new LineLayer("yellow-lane-layer", "yellow-lane-src");
-        LineLayer darkLaneLayer = new LineLayer("dark-lane-layer", "dark-lane-src");
-        SymbolLayer refPointLayer = new SymbolLayer("ref-point-layer", "ref-point-src");
-        SymbolLayer denmLayer = new SymbolLayer("denm-layer", "denm-src");
-        LineLayer denmPathLayer = new LineLayer("denm-path-layer", "denm-src");
-        SymbolLayer camLayer = new SymbolLayer("cam-layer", "cam-src");
-        LineLayer camPathLayer = new LineLayer("cam-path-layer", "cam-src");
-        FillLayer cpmAreaLayer = new FillLayer("cpm-area-layer", "cpm-area-src");
-        SymbolLayer cpmSensorLayer = new SymbolLayer("cpm-sensor-layer", "cpm-sensor-src");
-        FillLayer cpmObjectOutlineLayer = new FillLayer("cpm-object-outline-layer", "cpm-object-src");
-        SymbolLayer cpmObjectLayer = new SymbolLayer("cpm-object-layer", "cpm-object-src");
-        SymbolLayer obuPosLayer = new SymbolLayer("obu-pos-layer", "obu-pos-src");
-
-        greenLaneLayer.setProperties(
-                lineCap(Property.LINE_CAP_ROUND),
-                lineJoin(Property.LINE_JOIN_ROUND),
-                lineWidth(4f),
-                lineGradient(
-                        interpolate(
-                                linear(),
-                                lineProgress(),
-                                stop(0f, color(Color.parseColor("#009e15"))),
-                                stop(1f, color(Color.TRANSPARENT))
-                        )
-                )
-        );
-        redLaneLayer.setProperties(
-                lineCap(Property.LINE_CAP_ROUND),
-                lineJoin(Property.LINE_JOIN_ROUND),
-                lineWidth(4f),
-                lineGradient(
-                        interpolate(
-                                linear(),
-                                lineProgress(),
-                                stop(0f, color(Color.parseColor("#c80000"))),
-                                stop(1f, color(Color.TRANSPARENT))
-                        )
-                )
-        );
-        yellowLaneLayer.setProperties(
-                lineCap(Property.LINE_CAP_ROUND),
-                lineJoin(Property.LINE_JOIN_ROUND),
-                lineWidth(4f),
-                lineGradient(
-                        interpolate(
-                                linear(),
-                                lineProgress(),
-                                stop(0f, color(Color.parseColor("#f9a800"))),
-                                stop(1f, color(Color.TRANSPARENT))
-                        )
-                )
-        );
-        darkLaneLayer.setProperties(
-                lineCap(Property.LINE_CAP_ROUND),
-                lineJoin(Property.LINE_JOIN_ROUND),
-                lineWidth(4f),
-                lineGradient(
-                        interpolate(
-                                linear(),
-                                lineProgress(),
-                                stop(0f, color(Color.parseColor("#888888"))),
-                                stop(1f, color(Color.TRANSPARENT))
-                        )
-                )
-        );
-        refPointLayer.setProperties(
-                iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_MAP),
-                iconImage("cam-rsu"),
-                iconSize(interpolate(exponential(0.5f), zoom(), stop(16, 0.22f), stop(18, 0.5f))),
-                textField(Expression.get("intersectionId")),
-                symbolSortKey(5f),
-                textColor("#ffffff"),
-                textSize(interpolate(exponential(0.5), zoom(), stop(16, 6f), stop(18, 14f)))
-        );
-        denmPathLayer.setProperties(
-                lineCap(Property.LINE_CAP_ROUND),
-                lineJoin(Property.LINE_JOIN_ROUND),
-                lineWidth(5f),
-                lineGradient(
-                        interpolate(
-                                linear(),
-                                lineProgress(),
-                                stop(0f, color(Color.parseColor("#d71904"))),
-                                stop(1f, color(Color.TRANSPARENT))
-                        )
-                )
-        );
-        denmLayer.setProperties(
-                iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_VIEWPORT),
-                iconImage("cam-car"),
-                iconSize(0.3f),
-                symbolSortKey(9f),
-                iconAllowOverlap(true),
-                iconImage(match(
-                                toNumber(get("causeCode")),
-                                literal("denm-gen"),
-                                stop(1, "denm-jam"),
-                                stop(3, "denm-wks"),
-                                stop(10, "denm-obs"),
-                                stop(11, "denm-anm"),
-                                stop(12, "denm-vru"),
-                                stop(15, "denm-eon"),
-                                stop(27, "denm-jam"),
-                                stop(94, match(
-                                        toNumber(get("subCauseCode")),
-                                        literal("denm-stn"),
-                                        stop(2, "denm-bkn"),
-                                        stop(3, "denm-col"))
-                                ),
-                                stop(95, "denm-emv"),
-                                stop(97, "denm-col"),
-                                stop(99, "denm-stale")
-                        )
-                )
-        );
-        camPathLayer.setProperties(
-                lineCap(Property.LINE_CAP_ROUND),
-                lineJoin(Property.LINE_JOIN_ROUND),
-                lineWidth(5f),
-                lineGradient(
-                        interpolate(
-                                linear(),
-                                lineProgress(),
-                                stop(0f, color(Color.parseColor(isDarkMode() ? "#787878" : "#1c445b"))),
-                                stop(1f, color(Color.TRANSPARENT))
-                        )
-                )
-        );
-        camLayer.setProperties(
-                iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_MAP),
-                iconAllowOverlap(true),
-                symbolSortKey(6f),
-                iconImage(match(
-                                toNumber(get("stationType")),
-                                literal("cam-rsu"),
-                                stop(1, "cam-vru"),
-                                stop(2, "cam-bike"),
-                                stop(3, "cam-scooter"),
-                                stop(4, "cam-motorcycle"),
-                                stop(5, "cam-car"),
-                                stop(6, "cam-bus"),
-                                stop(7, "cam-sm-truck"),
-                                stop(8, "cam-lg-truck"),
-                                stop(9, "cam-trailer"),
-                                stop(10, "cam-emv"),
-                                stop(11, "cam-tram")
-                        )
-                ),
-                iconSize(0.22f),
-                iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
-                iconRotate(get("degreesHeading"))
-        );
-        cpmAreaLayer.setProperties(
-                fillOpacity(0.3f),
-                fillAntialias(false),
-                fillColor("#dddddd")
-        );
-        cpmSensorLayer.setProperties(
-                iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_MAP),
-                iconAllowOverlap(true),
-                symbolSortKey(8f),
-                iconImage("cpm-station"),
-                iconSize(0.05f)
-        );
-        cpmObjectOutlineLayer.setProperties(
-                fillOpacity(0.8f),
-                fillAntialias(false),
-                fillColor(match(
-                        toNumber(get("classification")),
-                        color(Color.parseColor("#888888")),
-                        stop(1, color(Color.parseColor("#5c84db"))),
-                        stop(2, color(Color.parseColor("#db5c5c"))),
-                        stop(3, color(Color.parseColor("#65db5c")))
-                )),
-                fillPattern(match(
-                        toNumber(get("classification")),
-                        literal("empty"),
-                        stop(1, "cpm-vhc"),
-                        stop(2, "cpm-per"),
-                        stop(3, "cpm-anm")
-                ))
-        );
-        cpmObjectLayer.setProperties(
-                iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_MAP),
-                iconAllowOverlap(true),
-                symbolSortKey(8f),
-                iconSize(0.3f),
-                iconImage(match(
-                        toNumber(get("classification")),
-                        literal("cpm-per"),
-                        stop(1, "cpm-vhc"),
-                        stop(2, "cpm-per"),
-                        stop(3, "cpm-anm")
-                ))
-        );
-        obuPosLayer.setProperties(
-                iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_MAP),
-                iconAllowOverlap(true),
-                symbolSortKey(8.5f),
-                iconImage("obu-pos"),
-                iconSize(0.18f),
-                iconRotate(get("heading")),
-                iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP)
-        );
-
-        style.addLayer(cpmAreaLayer);
-        style.addLayer(greenLaneLayer);
-        style.addLayer(redLaneLayer);
-        style.addLayer(yellowLaneLayer);
-        style.addLayer(darkLaneLayer);
-        style.addLayer(refPointLayer);
-        style.addLayer(camPathLayer);
-        style.addLayer(camLayer);
-        style.addLayer(cpmSensorLayer);
-        style.addLayer(cpmObjectOutlineLayer);
-        style.addLayer(cpmObjectLayer);
-        style.addLayer(denmPathLayer);
-        style.addLayer(obuPosLayer);
-        style.addLayer(denmLayer);
-    }
-
-    private boolean isDarkMode() {
-        int nightModeFlags =
-                mContext.getResources().getConfiguration().uiMode &
-                        Configuration.UI_MODE_NIGHT_MASK;
-        return Configuration.UI_MODE_NIGHT_YES == nightModeFlags;
-    }
-
-    private List<Pair<String, Integer>> v2xImageAssets() {
-        boolean isDarkMode = isDarkMode();
-        return Arrays.asList(
-                new Pair("cam-bike", isDarkMode ? R.drawable.cam_bike : R.drawable.cam_bike_light),
-                new Pair("cam-bus", isDarkMode ? R.drawable.cam_bus : R.drawable.cam_bus_light),
-                new Pair("cam-car", isDarkMode ? R.drawable.cam_car : R.drawable.cam_car_light),
-                new Pair("cam-emv", isDarkMode ? R.drawable.cam_special : R.drawable.cam_emv_light),
-                new Pair("cam-lg-truck", isDarkMode ? R.drawable.cam_heavy_truck : R.drawable.cam_lgtruck_light),
-                new Pair("cam-sm-truck", isDarkMode ? R.drawable.cam_light_truck : R.drawable.cam_smltruck_light),
-                new Pair("cam-motorcycle", isDarkMode ? R.drawable.cam_motorcycle : R.drawable.cam_motorcycle_light),
-                new Pair("cam-scooter", isDarkMode ? R.drawable.cam_scooter : R.drawable.cam_scooter_light),
-                new Pair("cam-rsu", isDarkMode ? R.drawable.cam_rsu : R.drawable.cam_default_light),
-                new Pair("cam-vru", isDarkMode ? R.drawable.cam_pedestrian : R.drawable.cam_vru_light),
-                new Pair("cam-trailer", isDarkMode ? R.drawable.cam_trailer : R.drawable.cam_trailer_light),
-                new Pair("cam-tram", isDarkMode ? R.drawable.cam_tram : R.drawable.cam_tram_light),
-                new Pair("denm-acc", R.drawable.warning_accident),
-                new Pair("denm-anm", R.drawable.warning_animals),
-                new Pair("denm-brk", R.drawable.warning_brake),
-                new Pair("denm-bdn", R.drawable.warning_breakdown),
-                new Pair("denm-col", R.drawable.warning_collision),
-                new Pair("denm-emv", R.drawable.warning_emv),
-                new Pair("denm-eon", R.drawable.warning_emv_ong),
-                new Pair("denm-gen", R.drawable.warning_generic),
-                new Pair("denm-jam", R.drawable.warning_jam),
-                new Pair("denm-obs", R.drawable.warning_obstacle),
-                new Pair("denm-ovr", R.drawable.warning_overtake),
-                new Pair("denm-wks", R.drawable.warning_roadworks),
-                new Pair("denm-stale", R.drawable.warning_stale),
-                new Pair("denm-stn", R.drawable.warning_stationary),
-                new Pair("denm-vru", R.drawable.warning_vru),
-                new Pair("cpm-station", R.drawable.cpm_station_icon),
-                new Pair("cpm-anm", R.drawable.class_animal),
-                new Pair("cpm-vhc", R.drawable.class_vehicle),
-                new Pair("cpm-per", R.drawable.class_person),
-                new Pair("empty", R.drawable.empty_drawable),
-                new Pair("obu-pos", R.drawable.obu_pos_icon)
-        );
+        RCTMGLModule.registeredGeojsonCallback = update -> {
+            ((ThemedReactContext) mContext).runOnUiQueueThread(() -> {
+                switch (update.first) {
+                    case 0:
+                        if (greenLaneSrc != null) {
+                        greenLaneSrc.setGeoJson(update.second);
+                        }
+                        break;
+                    case 1:
+                        if (redLaneSrc != null) {
+                        redLaneSrc.setGeoJson(update.second);
+                        }
+                        break;
+                    case 2:
+                        if (yellowLaneSrc != null) {
+                        yellowLaneSrc.setGeoJson(update.second);
+                        }
+                        break;
+                    case 3:
+                        if (darkLaneSrc != null) {
+                        darkLaneSrc.setGeoJson(update.second);
+                        }
+                        break;
+                    case 4:
+                        if (refPointSrc != null) {
+                        refPointSrc.setGeoJson(update.second);
+                        }
+                        break;
+                    case 5:
+                        if (denmSrc != null) {
+                        denmSrc.setGeoJson(update.second);
+                        }
+                        break;
+                    case 6:
+                        if (camSrc != null) {
+                        camSrc.setGeoJson(update.second);
+                        }
+                        break;
+                    case 7:
+                        if (cpmAreaSrc != null) {
+                        cpmAreaSrc.setGeoJson(update.second);
+                        }
+                        break;
+                    case 8:
+                        if (cpmSensorSrc != null) {
+                        cpmSensorSrc.setGeoJson(update.second);
+                        }
+                        break;
+                    case 9:
+                        if (cpmObjectSrc != null) {
+                        cpmObjectSrc.setGeoJson(update.second);
+                        }
+                        break;
+                    case 10:
+                        if (ivimSrc != null) {
+                        ivimSrc.setGeoJson(update.second);
+                        }
+                        break;
+                    case 11:
+                        if (miscSrc != null) {
+                        miscSrc.setGeoJson(update.second);
+                        }
+                        break;
+                }
+            });
+        };
     }
 }
