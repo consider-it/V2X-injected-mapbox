@@ -34,7 +34,10 @@ import okhttp3.OkHttpClient;
 import com.mapbox.mapboxsdk.module.http.HttpRequestUtil;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -381,12 +384,14 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
     // ==========================================================================================
     public static Consumer<Pair<Integer, String>> registeredGeojsonCallback;
     public static Consumer<ObuInfo> registeredObuCallback;
+    public static Consumer<Pair<Integer, String>> registeredPhaseUuidCallback;
     private ObuInfo lastObuInfo;
     private ScheduledExecutorService scheduler;
     private int listenerCount = 0;
     private ScheduledFuture<?> scheduledRetrial;
     private ScheduledFuture<?> scheduledGlosa;
     private String mqttHost;
+    private boolean matchLanes = false;
     private int mqttPort;
 
     static {
@@ -401,9 +406,14 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
 
     public static native void nativeClose();
 
+    public static native void nativeUseMatchedLanes(boolean use);
+
     @ReactMethod
     public void addListener(String eventName) {
         if (eventName.equals("GLOSA") && this.scheduledGlosa == null) {
+            if (scheduler == null) {
+                scheduler = Executors.newScheduledThreadPool(1);
+            }
             this.scheduledGlosa = scheduler.scheduleAtFixedRate(this.glosaTask, 0, 1000, TimeUnit.MILLISECONDS);
         }
 
@@ -422,7 +432,9 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
     public void initializeV2xCore(String mqttHost, int mqttPort) {
         this.mqttPort = mqttPort;
         this.mqttHost = mqttHost;
-        scheduler = Executors.newScheduledThreadPool(1);
+        if (scheduler == null) {
+            scheduler = Executors.newScheduledThreadPool(1);
+        }
         nativeInit(mqttHost, mqttPort);
         scheduler.scheduleAtFixedRate(() -> {
             nativeUpdateCache();
@@ -439,6 +451,21 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
+    public void useMatchedLanes(boolean use) {
+        nativeUseMatchedLanes(use);
+        if (use) {
+            for (int src : new int[]{0, 1, 2, 3}) {
+                javaGeoJSONCallback(src, "{\"type\":\"FeatureCollection\",\"features\":[]}".getBytes());
+            }
+        } else {
+            for (int src : new int[]{12,13,14}) {
+                javaGeoJSONCallback(src, "[]".getBytes());
+            }
+        }
+        this.matchLanes = use;
+    }
+
+    @ReactMethod
     public void switchV2xCoreBroker(String mqttHost, int mqttPort) {
         if (scheduledRetrial != null) {
             scheduledRetrial.cancel(false);
@@ -447,6 +474,7 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
         this.mqttHost = mqttHost;
         nativeClose();
         nativeInit(mqttHost, mqttPort);
+        nativeUseMatchedLanes(this.matchLanes);
         if (this.scheduledGlosa != null) {
             this.scheduledGlosa.cancel(true);
         }
@@ -510,7 +538,10 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
         if (featureCollectionType == 8 && (utf8Geojson.length > 60)) {
             sendEvent("CPM", null);
         }
-        if (registeredGeojsonCallback != null) {
+        if (featureCollectionType >= 12 && registeredPhaseUuidCallback != null) {
+            String uuidsJson = new String(utf8Geojson, StandardCharsets.UTF_8);
+            registeredPhaseUuidCallback.accept(new Pair<>(featureCollectionType, uuidsJson));
+        } else if (registeredGeojsonCallback != null) {
             String geojson = new String(utf8Geojson, StandardCharsets.UTF_8);
             registeredGeojsonCallback.accept(new Pair<>(featureCollectionType, geojson));
         }

@@ -132,6 +132,7 @@ declare namespace MapboxGL {
   function unregisterCpmCallback(): void;
   function unregisterDenmCallback(): void;
   function unregisterAllCallbacks(): void;
+  function useMatchedLanes(use: boolean): void;
 
   const offlineManager: OfflineManager;
   const snapshotManager: SnapshotManager;
