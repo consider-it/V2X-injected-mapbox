@@ -35,6 +35,11 @@ namespace CIT
 
         void close();
 
+        inline void updateSettings(V2X::Settings settings)
+        {
+          this->core->updateSettings(settings);
+        }
+
         inline void registerOnConnectCallback(
             std::function<void(int)> callback) { this->onBrokerConnected = callback; };
 
