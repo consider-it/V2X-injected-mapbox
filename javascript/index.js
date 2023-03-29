@@ -56,9 +56,7 @@ MapboxGL.registerCpmCallback = (callback) => {
 }
 
 MapboxGL.registerMqttConnectionCallback = (callback) => {
-  console.log("SUBSCRIBING")
   eventEmitter.addListener('MQTT_CONNECT', ({connectionState}) => {
-    console.log("IN CALLBACK", connectionState)
     callback(connectionState);
   });
 }
