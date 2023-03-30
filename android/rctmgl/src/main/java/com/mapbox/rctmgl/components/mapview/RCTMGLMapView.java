@@ -206,6 +206,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
 
     private Pair<Long, ObuInfo> lastObuUpdate;
     private ValueAnimator obuAnimator;
+    private boolean noAnimationUpdate = false;
 
     // END V2X CORE
 
@@ -837,6 +838,11 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
         mStyleURL = styleURL;
 
         if (mMap != null) {
+            RCTMGLModule.registeredGeojsonCallback = null;
+            RCTMGLModule.registeredPhaseUuidCallback = null;
+            RCTMGLModule.registeredObuCallback = null;
+            obuAnimator.cancel();
+            noAnimationUpdate = true;
             removeAllSourcesFromMap();
 
             if (isJSONValid(mStyleURL)) {
@@ -845,6 +851,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
                     public void onStyleLoaded(@NonNull Style style) {
                         addAllSourcesToMap();
                         initV2xLayers(style);
+                        noAnimationUpdate = false;
                     }
                 });
             } else {
@@ -853,6 +860,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
                     public void onStyleLoaded(@NonNull Style style) {
                         addAllSourcesToMap();
                         initV2xLayers(style);
+                        noAnimationUpdate = false;
                     }
                 });
             }
@@ -1840,7 +1848,7 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
                     obuAnimator = ObjectAnimator.ofObject(new ObuInfoEvaluator(), lastObuUpdate.second, update);
                     obuAnimator.setDuration(System.currentTimeMillis() - lastObuUpdate.first);
                     obuAnimator.addUpdateListener((ValueAnimator.AnimatorUpdateListener) valueAnimator -> ((ThemedReactContext) mContext).runOnUiQueueThread(() -> {
-                        obuPosSrc.setGeoJson(((ObuInfo) valueAnimator.getAnimatedValue()).toJson());
+                        if (!noAnimationUpdate) obuPosSrc.setGeoJson(((ObuInfo) valueAnimator.getAnimatedValue()).toJson());
                     }));
                     obuAnimator.start();
                 } else {

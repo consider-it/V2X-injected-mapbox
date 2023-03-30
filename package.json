@@ -23,7 +23,6 @@
     "unittest:single": "jest --testNamePattern",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "prepare": "yarn build:plugin",
     "prepack": "bash ./scripts/prepack.sh",
     "postpack": "bash ./scripts/postpack.sh",
     "test:plugin": "expo-module test plugin",
