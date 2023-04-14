@@ -166,7 +166,7 @@ void CIT::RnCore::onConnect(struct mosquitto *mosq, void *coreRef, int rc)
 
 	char *const const topics[] =
 		{TOPIC_SPATEM, TOPIC_OBU_INFO, TOPIC_MAPEM, TOPIC_DENM, TOPIC_CAM, TOPIC_CPM,
-		 TOPIC_IVIM, TOPIC_DENM_LOOPBACK, TOPIC_CPM_LOOPBACK};
+		 TOPIC_IVIM};
 	mosquitto_subscribe_multiple(rnCore->client, nullptr, 9, topics, 0, 0, NULL);
 
 	if (rnCore->onBrokerConnected != nullptr)

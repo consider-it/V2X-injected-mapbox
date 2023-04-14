@@ -506,6 +506,10 @@ public class RCTMGLModule extends ReactContextBaseJavaModule {
     };
 
     void javaObuInfoCallback(double lon, double lat, double heading, double speed, double time) {
+        if (lon < -180.0 || lon > 180.0 || lat < -90.0 || lat > 90.0) {
+            Log.e("RCTMGLModule", "javaObuInfoCallback: Invalid coordinates! Received Latitude " + lat + " Logitude " + lon);
+            return;
+        }
         lastObuInfo = new ObuInfo(lon, lat, heading, speed, time);
         WritableMap params = Arguments.createMap();
         params.putString("obuInfo", lastObuInfo.toJson());
