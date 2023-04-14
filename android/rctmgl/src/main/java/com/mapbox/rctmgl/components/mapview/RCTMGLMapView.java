@@ -838,11 +838,13 @@ public class RCTMGLMapView extends MapView implements OnMapReadyCallback, Mapbox
         mStyleURL = styleURL;
 
         if (mMap != null) {
+            noAnimationUpdate = true;
             RCTMGLModule.registeredGeojsonCallback = null;
             RCTMGLModule.registeredPhaseUuidCallback = null;
             RCTMGLModule.registeredObuCallback = null;
-            obuAnimator.cancel();
-            noAnimationUpdate = true;
+            if (obuAnimator != null) {
+              obuAnimator.cancel();
+            }
             removeAllSourcesFromMap();
 
             if (isJSONValid(mStyleURL)) {
